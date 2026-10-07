@@ -42,3 +42,11 @@ The Python suite reads the untracked `.env` and requires a local, seeded disposa
 - Remote GitHub Actions results are recorded by the pull request checks; local passing checks alone do not establish a remote run succeeded.
 
 Screens in `docs/screenshots` contain synthetic account data captured from the running application. The passenger map images use actual OSM tiles captured in a normal browser session. Automated map tests substitute labelled synthetic tiles and save their captures only in ignored `artifacts/screenshots`; no test pans or zooms against the public tile server. See [map coverage and attribution](map.md).
+
+## Driver and HR visual documentation — 2026-10-07
+
+The README now embeds 28 additional browser captures: 17 driver views and 11 HR/staff views, taken from the running local Docker app at desktop 1440 × 1000 and mobile 390 × 844 viewports. See the [screenshot index](screenshots/README.md) for the individual states, capture context and reproduction steps.
+
+The driver walkthrough follows one persisted synthetic wallet-paid booking through offer, acceptance, start, completion and rating. The 43,000 toman fare, 8,600 commission and 34,400 net remain consistent; a subsequent 1,000 toman simulated withdrawal leaves 33,400. HR captures show private synthetic documents, pending/approved/rejected states, the recorded rejection reason in both staff and driver views, manager/reviewer navigation, report results, an empty report and the unsubmitted staff form. The pending review's filled rejection reason is also unsubmitted; it is distinct from the rejected account.
+
+This documentation-only update does not change application code or database schema. Image files and README links were checked, and the GitHub-rendered gallery was inspected. The captures do not establish physical-device coverage or verification of every role/error combination.

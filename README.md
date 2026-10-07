@@ -18,7 +18,7 @@
 
 **This is a working educational demo.** It persists journeys and settlements in MySQL, using synthetic accounts and simulated money. Tariffs are illustrative; SMS, banking, street routing and insurance are not connected. There is no hosted public demo: the command below starts it on your own computer.
 
-[Product experience](#the-product-experience) · [Pricing](#a-price-you-can-explain) · [Architecture](#under-the-interface) · [Development](#develop-locally) · [Verification](#verified-behavior) · [Origins & credits](#origins-and-credits)
+[Product experience](#the-product-experience) · [Driver tour](#the-driver-experience) · [HR tour](#the-hr-experience) · [Pricing](#a-price-you-can-explain) · [Architecture](#under-the-interface) · [Development](#develop-locally) · [Verification](#verified-behavior) · [Origins & credits](#origins-and-credits)
 
 ## The product experience
 
@@ -52,6 +52,153 @@ The redesign follows familiar ride-hailing interaction patterns. It is an implem
 | **Staff** | Personnel sign-in, private document review and recorded approval/rejection. HR managers can create staff accounts and run all 20 read-only reports. |
 
 WOMEN eligibility, cargo weight and vehicle capacity are checked on the server. Nearby dispatch uses the driver's last reported location; it does not imply continuous vehicle tracking.
+
+## The driver experience
+
+<p dir="rtl"><strong>تجربهٔ راننده، از بررسی مدارک تا دریافت درآمد.</strong> این گالری وضعیت‌های مختلف کار روزانه، سفر و کیف پول را نشان می‌دهد. بخش‌های بازشونده شامل تصاویر بیشتر از ثبت‌نام، مدارک، موقعیت و خطاها هستند.</p>
+
+**Know the earnings before accepting.** A nearby offer shows the places, gross fare, BAXI commission and driver's net amount together. This desktop offer and the mobile journey below follow the **same synthetic trip**: **43,000 toman fare − 8,600 commission = 34,400 net earnings**.
+
+![Driver desktop: nearby request with origin, destination, gross fare, commission, net earnings and accept action](docs/screenshots/driver/offer-desktop.jpg)
+
+### Accept → start → settle → rate
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/accepted-mobile.jpg" width="260" alt="Driver mobile: accepted trip with the start-trip action"><br><strong>۱ · پذیرفته‌شده / Accepted</strong><br>The assigned trip stays visible; starting it is an explicit action.</td>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/in-progress-mobile.jpg" width="260" alt="Driver mobile: in-progress trip with passenger-selected wallet payment and settle action"><br><strong>۲ · در حال سفر / In progress</strong><br>The passenger's selected payment method accompanies completion and settlement.</td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/receipt-mobile.jpg" width="260" alt="Driver mobile: completed trip retaining the booked amounts and offering passenger rating"><br><strong>۳ · رسید / Completed</strong><br>History retains the booked fare, commission and net amount, with passenger rating.</td>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/rated-mobile.jpg" width="260" alt="Driver mobile: completed trip after a five-star passenger rating has been saved"><br><strong>۴ · امتیاز ثبت‌شده / Rated</strong><br>The saved rating replaces the submission form.</td>
+  </tr>
+</table>
+
+<details>
+<summary><strong>Registration and verification · ثبت‌نام، مدارک، انتظار و رد</strong></summary>
+
+**Registration collects the driver and vehicle details.** The lower part of the same form accepts four private documents; the demo can supply clearly labelled synthetic documents. These captures show an unsubmitted form, not a newly approved account.
+
+![Driver registration: personal details, service, vehicle, passenger capacity and bank-information fields](docs/screenshots/driver/registration-desktop.jpg)
+
+![Lower driver registration form: four document fields in the ready state using synthetic demo documents](docs/screenshots/driver/documents-ready-desktop.jpg)
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/pending-mobile.jpg" width="260" alt="Driver mobile: awaiting document review with requests unavailable"><br><strong>در انتظار بررسی / Pending</strong><br>Requests become available after staff approval.</td>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/rejected-mobile.jpg" width="260" alt="Driver mobile: rejected verification displaying the reason recorded by staff"><br><strong>ردشده / Rejected</strong><br>The reason recorded in HR appears in the driver's view.</td>
+  </tr>
+</table>
+
+The rejection screen communicates the decision; the current app does not provide an in-app document resubmission flow.
+
+</details>
+
+<details>
+<summary><strong>Availability and location · خارج از سرویس، موقعیت و انتظار درخواست</strong></summary>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/off-duty-mobile.jpg" width="260" alt="Driver mobile: off duty with start-work and change-location controls"><br><strong>خارج از سرویس / Off duty</strong><br>Review the reported location before starting work.</td>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/location-mobile.jpg" width="260" alt="Driver mobile: Tehran map dialog with center pin and explicit location confirmation"><br><strong>موقعیت روی نقشه / Location</strong><br>Confirm a point inside Tehran; the initial Azadi Square point is a sample.</td>
+  </tr>
+</table>
+
+**On duty, with no matching request.** The empty state explains that an eligible request will appear here. Dispatch uses a 5 km radius around the last reported location, with service and capacity eligibility checks.
+
+![Driver desktop: on-duty empty state, reported location and leave-service control](docs/screenshots/driver/available-empty-desktop.jpg)
+
+</details>
+
+<details>
+<summary><strong>Fare details, wallet and account · جزئیات کرایه، برداشت و حساب</strong></summary>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/fare-details-mobile.jpg" width="260" alt="Driver mobile: expanded booked-fare calculation including rounding adjustment"><br><strong>جزئیات کرایه / Fare details</strong><br>The stored calculation explains the same 43,000 toman fare.</td>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/wallet-shortfall-mobile.jpg" width="260" alt="Driver mobile: insufficient-balance error for a simulated withdrawal"><br><strong>موجودی ناکافی / Recovery</strong><br>A 100,000 toman withdrawal fails against a 34,400 toman balance.</td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/wallet-mobile.jpg" width="260" alt="Driver mobile: balance of 33,400 toman and a recorded 1,000 toman demo withdrawal"><br><strong>برداشت ثبت‌شده / Wallet</strong><br>After a 1,000 toman simulated withdrawal, 33,400 remains.</td>
+    <td align="center" width="50%"><img src="docs/screenshots/driver/account-mobile.jpg" width="260" alt="Driver mobile: account with approved status, installation help and sign-out"><br><strong>حساب راننده / Account</strong><br>Verification status, installation help and sign-out stay accessible.</td>
+  </tr>
+</table>
+
+**The same wallet on desktop:** balance, simulated withdrawal and its transaction record.
+
+![Driver desktop wallet: 33,400 toman balance after a 1,000 toman synthetic withdrawal](docs/screenshots/driver/wallet-desktop.jpg)
+
+Wallet transaction history here lists simulated top-ups/withdrawals; the trip's fare and earnings are retained in trip history. No real bank transfer occurs.
+
+</details>
+
+## The HR experience
+
+<p dir="rtl"><strong>پنل منابع انسانی، از صف پرونده تا ثبت تصمیم و گزارش.</strong> تصاویر شامل پروندهٔ در انتظار، مدارک آمادهٔ بررسی، تأیید، رد با دلیل، دسترسی کارشناس و مدیر، گزارش‌ها و فرم همکار جدید هستند.</p>
+
+**A queue with explicit review states.** Pending, approved and rejected filters separate the work. Selecting a driver opens their private documents beside the queue on desktop. The first capture precedes the demo decisions; later counts reflect those decisions.
+
+![HR manager desktop: pending driver queue, status filters, empty selection panel and manager navigation](docs/screenshots/hr/queue-desktop.jpg)
+
+### Review documents → record a decision
+
+**Review all four documents and provide a reason when rejecting.** This capture is scrolled to the review actions. The filled reason is a draft; this pending example was left unsubmitted. The rejected example below is a separate synthetic account with a saved decision.
+
+![HR desktop document review: four synthetic documents, draft rejection reason, approve and reject actions](docs/screenshots/hr/document-review-desktop.jpg)
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/hr/queue-mobile.jpg" width="260" alt="HR mobile: pending queue, state filters and manager bottom navigation"><br><strong>صف موبایل / Mobile queue</strong><br>The same review states with mobile navigation.</td>
+    <td align="center" width="50%"><img src="docs/screenshots/hr/decision-mobile.jpg" width="260" alt="HR mobile: selected driver documents, draft rejection reason and decision controls"><br><strong>بررسی موبایل / Mobile review</strong><br>Documents and decision controls remain together on the smaller screen.</td>
+  </tr>
+</table>
+
+<details>
+<summary><strong>Recorded outcomes and role boundaries · تأیید، رد و سطح دسترسی</strong></summary>
+
+**Approved:** the saved status is visible on the selected file. This is the driver used in the complete trip walkthrough above.
+
+![HR reviewer desktop: approved synthetic driver file and document previews](docs/screenshots/hr/approval-recorded-desktop.jpg)
+
+**Rejected with a reason:** the saved explanation appears below the documents and is also shown to the driver in the rejected-state screenshot above.
+
+![HR desktop: rejected driver file showing the recorded explanation below four synthetic documents](docs/screenshots/hr/rejection-review-desktop.jpg)
+
+**Reviewer access:** the reviewer account has document review navigation. Reports and staff creation are available to the HR manager; authorization is also enforced by the API.
+
+![Staff reviewer desktop: document review queue with only the review section in navigation](docs/screenshots/hr/reviewer-desktop.jpg)
+
+</details>
+
+<details>
+<summary><strong>Reports with data and without data · گزارش‌های عملیاتی، حقوق و حالت خالی</strong></summary>
+
+The manager can choose from **20 read-only reports**. These examples cover revenue, employee payroll and a report with no matching rows. Amounts are displayed in toman; historical fractions remain visible.
+
+**Revenue by service:** journey count and gross revenue across the four services.
+
+![HR revenue report: four service rows with completed journey counts and gross revenue in toman](docs/screenshots/hr/revenue-report-desktop.jpg)
+
+**Payroll by department:** employee count and aggregate salary. These are seeded synthetic figures, not actual compensation data.
+
+![HR payroll report: synthetic HR employee count and department salary total in toman](docs/screenshots/hr/payroll-report-desktop.jpg)
+
+**No matching data:** the WOMEN compliance report has no violating rows in this local dataset. The interface shows an explicit empty state rather than a fabricated table.
+
+![HR report empty state: no rows for the WOMEN service compliance report](docs/screenshots/hr/empty-report-desktop.jpg)
+
+</details>
+
+<details>
+<summary><strong>New staff form · فرم همکار جدید</strong></summary>
+
+The HR manager's form collects identity fields, salary in toman, department, position, skill level and education. This is an **unsubmitted form**; no extra staff account was created for the capture.
+
+![HR manager desktop: new colleague form with salary, department, position, proficiency and education fields](docs/screenshots/hr/new-colleague-desktop.jpg)
+
+</details>
+
+All driver and HR images were captured from the running local app on **2026-10-07**, with synthetic accounts, synthetic documents and simulated money. Desktop captures target 1440 × 1000; mobile captures target 390 × 844. Some views are scrolled to show the relevant controls. They document the implemented states, not physical-device testing or every error combination. [Screenshot index, state coverage and reproduction notes →](docs/screenshots/README.md)
 
 ## Run it locally
 
