@@ -3,7 +3,8 @@ ARG PIP_INDEX_URL=https://pypi.org/simple
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && useradd --uid 10001 --create-home baxi
+RUN pip install --no-cache-dir --upgrade pip==26.2.1 && pip install --no-cache-dir -r requirements.txt && useradd --uid 10001 --create-home baxi
+COPY public/tehran-area.json ./public/tehran-area.json
 COPY src ./src
 COPY scripts/seed_demo.py ./scripts/seed_demo.py
 COPY scripts/start_api.py ./scripts/start_api.py

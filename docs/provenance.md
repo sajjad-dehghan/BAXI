@@ -21,12 +21,14 @@ Design choices: Persian RTL first, locally bundled Vazirmatn, one restrained pur
 
 ## Current scope
 
+Booking supports interactive origin/destination selection on a real map and operates only within Tehran city. [Map coverage and attribution](map.md) records the shared boundary source, ODbL data license, tile-service terms and the difference between a straight-line connection and street routing.
+
 The active demo implements authentication/registration, four-service quotation and requests, eligible nearby dispatch, approval/rejection, trip lifecycle and settlement, history and rating, demo wallet transfers, staff creation and 20 reports. The frontend operates on persisted API data, not hardcoded journey lists.
 
 These integrations are deliberately explicit future work:
 
 - SMS delivery and genuine phone ownership verification.
-- Online map tiles, address search, road routing, traffic and ETA. The route graphic is schematic and coordinate inputs remain available.
+- Address search, road routing, traffic and ETA. Booking now uses real OpenStreetMap tiles and Tehran-only pin selection; the connecting line represents straight-line distance.
 - Real payment gateway, bank withdrawals, insurance and identity-document verification.
 - Push notifications, background location and multi-instance real-time dispatch.
 - Shared production session storage, document scanning/retention, account recovery and production operations.

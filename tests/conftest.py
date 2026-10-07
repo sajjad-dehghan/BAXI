@@ -58,7 +58,7 @@ def accounts():
                 service,
             )
             execute(
-                "UPDATE drivers SET verification_status='approved',final_verification_date=CURDATE(),wallet_balance=1000000,latitude=34.798,longitude=48.515 WHERE id=%s",
+                "UPDATE drivers SET verification_status='approved',final_verification_date=CURDATE(),wallet_balance=1000000,latitude=35.7005,longitude=51.3376 WHERE id=%s",
                 (driver["id"],),
             )
             drivers.append(driver)

@@ -14,8 +14,9 @@ flowchart LR
 
 ## Responsibilities
 
-- `web/`: separate passenger, driver, registration, wallet, staff and authentication screens; `ui.tsx` provides shared controls and the explicitly schematic route illustration; `lib.ts` contains API transport, types, formatting and Persian error translation.
+- `web/`: separate passenger, driver, registration, wallet, staff and authentication screens; `RoutePicker.tsx` provides a lazy-loaded Leaflet map with sequential origin/destination confirmation, while `ui.tsx` provides shared controls and the decorative sign-in illustration; `lib.ts` contains API transport, types, formatting and Persian error translation.
 - `api.py`: validates request shapes, looks up server-side session identity, enforces role/ownership, serves authorized documents and exposes a fixed report catalog. The caller cannot supply another account ID for an owned operation.
+- `service_area.py` / `web/serviceArea.ts`: point-in-polygon checks against the same versioned Tehran GeoJSON; both trip endpoints and driver availability must be inside the city.
 - `services.py`: domain validation, state transitions, eligibility, transaction boundaries and explicit locks.
 - `database.py` / `db_session.py`: parameterized queries, short-lived connections and a context-local shared transaction. Importing a module never connects or writes data.
 - `db/main.sql`: foreign keys, checks, uniqueness, trip-cost views and wallet posting triggers; integer IRR avoids binary floating-point money.

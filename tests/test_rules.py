@@ -6,7 +6,37 @@ import pytest
 from generate_random_number import VerificationCodes
 from get_lat_lon_info import coordinates, estimate_fare, get_lat_lon_info, trip_km
 from security import hash_password, normalize_phone, verify_password
+from service_area import AREA, in_tehran
 from services import TripDraft, birth_date, document_path, quote
+
+
+@pytest.mark.parametrize(
+    "point", [(35.7005, 51.3376), (35.7112, 51.3786), (35.72, 51.42)]
+)
+def test_tehran_landmarks_are_in_service_area(point):
+    assert in_tehran(*point)
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        (34.798, 48.515),
+        (35.84, 50.94),
+        (35.57, 51.60),
+        (35.89, 51.43),
+        (float("nan"), 51.4),
+    ],
+)
+def test_outside_city_is_rejected_even_inside_bounding_rectangle(point):
+    assert not in_tehran(*point)
+    for origin, destination in [(point, (35.7, 51.34)), ((35.7, 51.34), point)]:
+        with pytest.raises(ValueError):
+            quote(TripDraft("baxi", origin, destination))
+
+
+def test_tehran_boundary_vertex_is_included():
+    lon, lat = AREA["geometry"]["coordinates"][0][0]
+    assert in_tehran(lat, lon)
 
 
 @pytest.mark.parametrize(
@@ -68,8 +98,8 @@ def test_invalid_coordinates(pair):
 
 
 def test_drafts_do_not_share_or_accumulate_routes():
-    first = TripDraft("baxi", (34.8, 48.5), (34.81, 48.51))
-    second = TripDraft("baxi", (35.8, 51.5), (35.81, 51.51))
+    first = TripDraft("baxi", (35.7005, 51.3376), (35.7112, 51.3786))
+    second = TripDraft("baxi", (35.72, 51.42), (35.73, 51.43))
     assert quote(first)["cost"] != 0 and quote(second)["cost"] != 0
     assert first.pickup != second.pickup
     with pytest.raises(FrozenInstanceError):

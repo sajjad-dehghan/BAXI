@@ -38,8 +38,8 @@ export const stateNames: Record<string, string> = {
 };
 export const freshDraft = (): Draft => ({
   service: "baxi",
-  pickup: [34.798, 48.515],
-  dropoff: [34.806, 48.53],
+  pickup: [35.7005, 51.3376],
+  dropoff: [35.7112, 51.3786],
   round_trip: false,
   cargo_weight: 5,
   cargo_value: 100000,
@@ -49,6 +49,7 @@ export const freshDraft = (): Draft => ({
 
 export function humanError(raw: string): string {
   const rules: [RegExp, string][] = [
+    [/within Tehran/i, "سرویس فقط در محدودهٔ شهر تهران فعال است."],
     [
       /Failed to fetch|NetworkError|Load failed/i,
       "ارتباط برقرار نشد. اتصال اینترنت را بررسی کنید.",
