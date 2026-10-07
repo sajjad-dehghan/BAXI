@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Wallet } from "lucide-react";
-import { Me, money, api } from "./lib";
+import { Me, toman, toIrr, api } from "./lib";
 import { Field, Busy, Empty } from "./ui";
 export function WalletPage({
   me,
@@ -32,8 +32,8 @@ export function WalletPage({
         <Wallet size={26} />
         <span>موجودی فعلی</span>
         <strong>
-          {money(me.account?.wallet_balance ?? 0)}
-          <small>ریال</small>
+          {toman(me.account?.wallet_balance ?? 0)}
+          <small>تومان</small>
         </strong>
         <span className="wallet-caption">حساب آزمایشی بکسی</span>
       </div>
@@ -41,26 +41,27 @@ export function WalletPage({
         className="panel"
         onSubmit={(e) => {
           e.preventDefault();
-          const value = Number(amount);
-          if (!pending.current || pending.current.amount !== value) {
-            pending.current = {
-              amount: value,
-              key: crypto.randomUUID().replaceAll("-", ""),
-            };
-          }
-          const transfer = pending.current;
           act(async () => {
+            const value = toIrr(amount);
+            if (!pending.current || pending.current.amount !== value) {
+              pending.current = {
+                amount: value,
+                key: crypto.randomUUID().replaceAll("-", ""),
+              };
+            }
+            const transfer = pending.current;
             await api("/wallet/demo", transfer);
             pending.current = null;
           });
         }}
       >
         <h2>{me.role === "client" ? "افزایش موجودی" : "برداشت از کیف پول"}</h2>
-        <Field label="مبلغ، ریال">
+        <Field label="مبلغ، تومان">
           <input
             type="number"
             min="1"
-            max="1000000000"
+            max="100000000"
+            step="1"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
@@ -93,7 +94,7 @@ export function WalletPage({
                 </strong>
                 <small>{new Date(t.time).toLocaleDateString("fa-IR")}</small>
               </span>
-              <bdi>{money(t.amount)} ریال</bdi>
+              <bdi>{toman(t.amount)} تومان</bdi>
             </div>
           ))}
         </div>

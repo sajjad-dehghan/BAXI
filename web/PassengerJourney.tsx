@@ -9,8 +9,9 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { api, money, serviceNames, Trip } from "./lib";
+import { api, money, toman, serviceNames, Trip } from "./lib";
 import { Busy } from "./ui";
+import { FareDetails } from "./FareDetails";
 const JourneyMap = lazy(() =>
   import("./RoutePicker").then((module) => ({ default: module.JourneyMap })),
 );
@@ -51,7 +52,7 @@ export function PassengerJourney({
       </div>
       <div>
         <span>{completed ? "مبلغ ثبت‌شدهٔ سفر" : "هزینهٔ سفر"}</span>
-        <strong>{money(trip.cost)} ریال</strong>
+        <strong>{toman(trip.cost)} تومان</strong>
       </div>
       <div>
         <span>روش پرداخت</span>
@@ -210,6 +211,11 @@ export function PassengerJourney({
             </div>
           )}
           {!completed && facts}
+          <FareDetails
+            breakdown={trip.pricing_breakdown}
+            cost={trip.cost}
+            version={trip.policy_version}
+          />
           <details className="journey-details">
             <summary>
               <MapPin size={16} /> جزئیات مسیر

@@ -1,10 +1,13 @@
 """Same-origin PWA API. Session identities stay on the server, never in localStorage."""
 
+import asyncio
+import logging
 import os
 import secrets
 import tempfile
 import time
 from collections import defaultdict, deque
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
@@ -22,11 +25,41 @@ from places import search_places
 from reports import REPORTS, run_report
 from security import normalize_phone
 
+
+@asynccontextmanager
+async def lifespan(app):
+    await asyncio.to_thread(svc.register_pricing_policy, svc.load_policy())
+    stopping = asyncio.Event()
+
+    async def maintain_quotes():
+        while not stopping.is_set():
+            try:
+                await asyncio.to_thread(svc.cleanup_quotes)
+                delay = 86400
+            except DatabaseError:
+                logging.getLogger(__name__).warning(
+                    "Quote cleanup failed; retrying in one hour"
+                )
+                delay = 3600
+            try:
+                await asyncio.wait_for(stopping.wait(), timeout=delay)
+            except TimeoutError:
+                pass
+
+    maintenance = asyncio.create_task(maintain_quotes())
+    try:
+        yield
+    finally:
+        stopping.set()
+        await maintenance
+
+
 app = FastAPI(
     title="BAXI PWA",
     version="2.0.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
+    lifespan=lifespan,
 )
 codes = VerificationCodes()
 auth_lock = Lock()
@@ -93,6 +126,10 @@ class DraftInput(Input):
 class LocationInput(Input):
     latitude: float
     longitude: float
+
+
+class BookingInput(DraftInput):
+    quote_id: str = Field(pattern=r"^[a-f0-9]{32}$")
 
 
 class PaymentInput(Input):
@@ -396,15 +433,17 @@ def get_document(driver_id: int, kind: str, identity=Depends(current)):
 @app.post("/api/quote")
 def quote(body: DraftInput, identity=Depends(current)):
     require(identity, "client")
-    return svc.quote(svc.TripDraft(**body.model_dump()))
+    return svc.issue_quote(identity.account_id, svc.TripDraft(**body.model_dump()))
 
 
 @app.post("/api/requests")
-def create_request(body: DraftInput, identity=Depends(current)):
+def create_request(body: BookingInput, identity=Depends(current)):
     require(identity, "client")
     return {
         "id": svc.create_request(
-            identity.account_id, svc.TripDraft(**body.model_dump())
+            identity.account_id,
+            svc.TripDraft(**body.model_dump(exclude={"quote_id"})),
+            body.quote_id,
         )
     }
 

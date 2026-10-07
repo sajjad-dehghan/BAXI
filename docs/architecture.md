@@ -41,11 +41,13 @@ One active request per passenger and one active accepted/in-progress trip per dr
 
 ## Money
 
-Rates per geodesic kilometre: passenger/WOMEN 10,000 IRR; BOX 8,000; BAAR 20,000. Passenger return journeys double the base fare. BOX adds 2% of declared cargo value as demo insurance. Decimal rounding produces an integer quote.
+The server's versioned `pricing-policy.json` defines sample base, per-kilometre and minimum fares, weight bands, commission and half-up rounding. Passenger and WOMEN tariffs match. Distance is geodesic, not a road route; cargo value is informational and no insurance premium is charged. See the complete [Persian pricing policy](pricing.fa.md) for tariff amounts and examples.
 
-The passenger selects wallet or cash before booking. The choice and place labels are persisted on the request. Explicit wallet requests check funds before insertion, and completion enforces the selected method. Legacy requests with a null preference retain their earlier payment workflow.
+`POST /api/quote` persists a client-owned, draft-bound five-minute quote. Booking requires its ID, rejects browser-supplied amounts and locks the client and quote before creating one request and its immutable pricing snapshot. Retries return the same request, including after expiry; a different trip needs a fresh quote. A policy version cannot be reused with different content. An already issued, unexpired quote remains valid after a new policy is loaded. Startup checks policy consistency; a single-process maintenance task removes only unbooked quotes expired for over a day at startup and every 24 hours, retrying database failures after one hour.
 
-Wallet payment debits the passenger and credits `floor(fare × 0.8)` to the driver. Recorded cash payment leaves the passenger wallet alone and debits the driver's wallet by `ceil(fare × 0.2)` as commission. Insufficient funds reject and roll back the entire operation. Demo deposit/withdrawal keys identify one account, operation and amount; retries do not post twice. These rules demonstrate database integrity, not bank settlement or insurance coverage.
+The passenger selects wallet or cash before booking. The choice and place labels are persisted; changing them does not alter the quote. Explicit wallet requests check funds before insertion, and completion enforces the selected method. Legacy requests with a null preference retain their earlier payment workflow.
+
+Money remains integer IRR in the API and database. All UI money is displayed/entered in toman; whole-toman input is multiplied by ten at the UI boundary and historical fractional tomans retain one decimal. Completion uses the stored driver net and commission, not today's tariff. Wallet payment debits the fare and credits driver net; recorded cash leaves the passenger wallet unchanged and debits only commission. Reports use the same net snapshot. Legacy trips without snapshots retain their original fares and 20% commission; their receipts explicitly lack a breakdown. Insufficient funds roll back the whole settlement. Demo transfer keys remain idempotent. These rules demonstrate integrity, not bank settlement or insurance coverage.
 
 ## PWA and offline behavior
 

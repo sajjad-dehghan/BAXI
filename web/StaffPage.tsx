@@ -7,7 +7,16 @@ import {
   Plus,
   UserRound,
 } from "lucide-react";
-import { Me, money, serviceNames, stateNames, humanError, api } from "./lib";
+import {
+  Me,
+  money,
+  toman,
+  toIrr,
+  serviceNames,
+  stateNames,
+  humanError,
+  api,
+} from "./lib";
 import { Field, Busy, Empty } from "./ui";
 export function StaffPage({
   me,
@@ -80,7 +89,7 @@ export function StaffPage({
             act(async () => {
               const result = await api("/staff/employees", {
                 ...data,
-                salary: Number(data.salary),
+                salary: toIrr(String(data.salary)),
               });
               window.alert(
                 `حساب همکار ساخته شد. کد پرسنلی: ${money(result.code)}`,
@@ -121,7 +130,7 @@ export function StaffPage({
                 autoComplete="new-password"
               />
             </Field>
-            <Field label="حقوق ماهانه، ریال">
+            <Field label="حقوق ماهانه، تومان">
               <input name="salary" type="number" min="0" required />
             </Field>
             <Field label="واحد">
@@ -417,8 +426,8 @@ export function columnName(key: string) {
         requests: "درخواست",
         service_type: "سرویس",
         trips: "سفر",
-        gross_irr: "درآمد ناخالص، ریال",
-        net_irr: "سهم راننده، ریال",
+        gross_irr: "درآمد ناخالص، تومان",
+        net_irr: "سهم راننده، تومان",
         id: "شناسه",
         first_name: "نام",
         last_name: "نام خانوادگی",
@@ -426,17 +435,17 @@ export function columnName(key: string) {
         total: "کل",
         cancelled: "لغوشده",
         cancelled_percent: "درصد لغو",
-        spent_irr: "هزینه، ریال",
+        spent_irr: "هزینه، تومان",
         signup_time: "زمان ثبت‌نام",
         type: "نوع",
         transactions: "تراکنش",
-        amount_irr: "مبلغ، ریال",
+        amount_irr: "مبلغ، تومان",
         client_id: "شناسهٔ مشتری",
         deposits: "واریز",
-        deposited_irr: "واریز، ریال",
+        deposited_irr: "واریز، تومان",
         driver_id: "شناسهٔ راننده",
         withdrawals: "برداشت",
-        withdrawn_irr: "برداشت، ریال",
+        withdrawn_irr: "برداشت، تومان",
         service: "سرویس",
         vehicles: "وسیله",
         capacity: "ظرفیت",
@@ -445,12 +454,12 @@ export function columnName(key: string) {
         average_seconds: "میانگین، ثانیه",
         department: "واحد",
         employees: "کارمند",
-        salary_irr: "حقوق، ریال",
+        salary_irr: "حقوق، تومان",
         reports: "گزارش",
         saved_addresses: "آدرس",
         month: "ماه",
-        gross_income: "ناخالص، ریال",
-        net_income: "خالص، ریال",
+        gross_income: "ناخالص، تومان",
+        net_income: "خالص، تومان",
         active_requests: "درخواست فعال",
         referred_id: "معرفی‌شده",
         referrer_id: "معرف",
@@ -464,6 +473,8 @@ export function displayValue(key: string, value: unknown) {
   if (key === "state") return stateNames[String(value)] ?? String(value);
   if (key === "service_type" || key === "service")
     return serviceNames[String(value)] ?? String(value);
+  if (key.endsWith("_irr") || ["gross_income", "net_income"].includes(key))
+    return toman(Number(value));
   if (typeof value === "number") return money(value);
   return String(value);
 }

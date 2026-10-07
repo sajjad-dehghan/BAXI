@@ -63,7 +63,7 @@ def accounts():
             )
             drivers.append(driver)
         for client in clients:
-            svc.demo_transfer(client["id"], "client", 1000000)
+            svc.demo_transfer(client["id"], "client", 10000000)
         yield {
             "client": clients[0]["id"],
             "female": clients[1]["id"],
@@ -85,6 +85,7 @@ def accounts():
                 ):
                     rid = request["id"]
                     for table in (
+                        "trip_pricing",
                         "compliments",
                         "complaints",
                         "service_acceptances",
@@ -106,6 +107,7 @@ def accounts():
                         "DELETE FROM transactions WHERE tracking_code=%s",
                         (tx["tracking_code"],),
                     )
+                execute("DELETE FROM fare_quotes WHERE client_id=%s", (cid,))
                 execute("DELETE FROM clients WHERE id=%s", (cid,))
             for did in driver_ids:
                 for link in ("withdrawals", "compensatory_deposits"):

@@ -4,17 +4,19 @@ Each multi-table change commits as one transaction. There is no remote API or
 payment provider: database credentials belong on the local demo machine only.
 """
 
+import json
 import re
 import secrets
 import shutil
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
 from config import ROOT, settings
 from database import execute, one, rows, transaction
-from get_lat_lon_info import coordinates, estimate_fare, get_lat_lon_info, trip_km
+from get_lat_lon_info import coordinates, get_lat_lon_info, trip_km
+from pricing import calculate, canonical, load_policy, policy_hash
 from security import hash_password, normalize_phone, verify_password
 from service_area import require_tehran
 
@@ -199,7 +201,7 @@ class TripDraft:
     dropoff_label: str = ""
 
 
-def quote(draft):
+def quote(draft, policy=None):
     if draft.payment not in {None, "wallet-to-wallet", "cash"}:
         raise ValueError("Unknown payment method")
     if draft.service not in VEHICLES:
@@ -215,20 +217,84 @@ def quote(draft):
         raise ValueError("Unknown cargo type")
     if draft.service in {"box", "baar"} and draft.round_trip:
         raise ValueError("Round trips are available for passenger services only.")
-    fare, insurance = estimate_fare(
-        draft.service, pickup, dropoff, draft.round_trip, value
+    estimate = calculate(
+        draft.service, trip_km(pickup, dropoff), draft.round_trip, weight, policy
     )
     return {
-        "cost": fare,
-        "insurance": insurance,
-        "km": trip_km(pickup, dropoff),
+        **estimate,
         "weight": weight,
         "value": value,
     }
 
 
-def create_request(client_id, draft):
-    estimate = quote(draft)
+def priced_draft(draft):
+    # Labels and payment may change without affecting the fare. Cargo details
+    # are bound as well, even when they are informational rather than surcharges.
+    return {
+        key: value
+        for key, value in asdict(draft).items()
+        if key not in {"payment", "pickup_label", "dropoff_label"}
+    }
+
+
+def register_pricing_policy(policy):
+    execute(
+        "INSERT IGNORE INTO pricing_policies(version,fingerprint,policy) VALUES(%s,%s,%s)",
+        (policy["version"], policy_hash(policy), canonical(policy)),
+    )
+    stored = one(
+        "SELECT fingerprint FROM pricing_policies WHERE version=%s",
+        (policy["version"],),
+    )
+    if stored["fingerprint"] != policy_hash(policy):
+        raise ValueError("Pricing configuration changed: increment the policy version.")
+
+
+def issue_quote(client_id, draft):
+    policy = load_policy()
+    estimate = quote(draft, policy)
+    with transaction():
+        client = one("SELECT sex FROM clients WHERE id=%s", (client_id,))
+        if not client or (draft.service == "women" and client["sex"] != "F"):
+            raise ValueError("This passenger cannot request the selected service.")
+        register_pricing_policy(policy)
+        quote_id = uuid.uuid4().hex
+        execute(
+            """INSERT INTO fare_quotes(id,client_id,policy_version,draft,price,expires_at)
+                   VALUES(%s,%s,%s,%s,%s,UTC_TIMESTAMP(6)+INTERVAL 300 SECOND)""",
+            (
+                quote_id,
+                client_id,
+                policy["version"],
+                canonical(priced_draft(draft)),
+                canonical(estimate),
+            ),
+        )
+        expiry = one("SELECT expires_at FROM fare_quotes WHERE id=%s", (quote_id,))[
+            "expires_at"
+        ]
+    return {
+        key: value
+        for key, value in {
+            **estimate,
+            "quote_id": quote_id,
+            "expires_at": expiry.isoformat() + "Z",
+        }.items()
+        if key not in {"driver_net_irr", "commission_irr", "commission_bps"}
+    }
+
+
+def cleanup_quotes():
+    # Booked quotes are retained for auditability, including cancelled trips.
+    return execute("""DELETE q FROM fare_quotes q LEFT JOIN trip_pricing p ON p.quote_id=q.id
+                      WHERE q.expires_at<UTC_TIMESTAMP(6)-INTERVAL 1 DAY AND p.request_id IS NULL""")[
+        1
+    ]
+
+
+def create_request(client_id, draft, quote_id):
+    if draft.payment not in {None, "wallet-to-wallet", "cash"}:
+        raise ValueError("Unknown payment method")
     origin, destination = (
         get_lat_lon_info(*draft.pickup),
         get_lat_lon_info(*draft.dropoff),
@@ -237,6 +303,22 @@ def create_request(client_id, draft):
         client = one("SELECT * FROM clients WHERE id=%s FOR UPDATE", (client_id,))
         if not client or (draft.service == "women" and client["sex"] != "F"):
             raise ValueError("This passenger cannot request the selected service.")
+        offered = one(
+            "SELECT *,expires_at<=UTC_TIMESTAMP(6) AS expired FROM fare_quotes WHERE id=%s AND client_id=%s FOR UPDATE",
+            (quote_id, client_id),
+        )
+        if not offered:
+            raise ValueError("Invalid quote; request a new price.")
+        if canonical(json.loads(offered["draft"])) != canonical(priced_draft(draft)):
+            raise ValueError("Quote does not match this request; request a new price.")
+        booked = one(
+            "SELECT request_id FROM trip_pricing WHERE quote_id=%s", (quote_id,)
+        )
+        if booked:
+            return booked["request_id"]
+        if offered["expired"]:
+            raise ValueError("Quote expired; request a new price and confirm it.")
+        estimate = json.loads(offered["price"])
         if (
             draft.payment == "wallet-to-wallet"
             and client["wallet_balance"] < estimate["cost"]
@@ -290,6 +372,20 @@ def create_request(client_id, draft):
                     else estimate["insurance"],
                 ),
             )
+        execute(
+            """INSERT INTO trip_pricing(request_id,quote_id,policy_version,breakdown,cost,commission_irr,driver_net_irr,commission_bps)
+                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (
+                request_id,
+                quote_id,
+                estimate["policy_version"],
+                canonical(estimate["breakdown"]),
+                estimate["cost"],
+                estimate["commission_irr"],
+                estimate["driver_net_irr"],
+                estimate["commission_bps"],
+            ),
+        )
     return request_id
 
 
@@ -300,11 +396,15 @@ REQUEST_SELECT = """SELECT r.*, c.first_name AS client_first_name,c.last_name AS
     COALESCE(v.vehicle_license_plate,vb.vehicle_license_plate,vh.vehicle_license_plate) AS vehicle_plate,
     d.latitude AS dropoff_latitude,d.longitude AS dropoff_longitude,t.cost,
     a.driver_rating,a.client_rating,a.method_of_payment,
+    p.policy_version,p.breakdown AS pricing_breakdown,
+    COALESCE(p.driver_net_irr,FLOOR(t.cost*0.8)) AS driver_net_irr,
+    COALESCE(p.commission_irr,t.cost-FLOOR(t.cost*0.8)) AS commission_irr,
     COALESCE(h.cargo_weight,l.cargo_weight,0) AS cargo_weight,
     COALESCE(h.cargo_type,l.cargo_type,'unfragile') AS cargo_type
     FROM service_requests r JOIN clients c ON c.id=r.client_id
     JOIN destinations d ON d.request_id=r.id AND d.stop_number=1 JOIN trip_costs t ON t.request_id=r.id
     LEFT JOIN service_acceptances a ON a.request_id=r.id
+    LEFT JOIN trip_pricing p ON p.request_id=r.id
     LEFT JOIN drivers dr ON dr.id=r.assigned_driver_id
     LEFT JOIN baxi v ON v.driver_id=dr.id AND r.service_type IN ('baxi','women')
     LEFT JOIN baxi_box vb ON vb.driver_id=dr.id AND r.service_type='box'
@@ -648,8 +748,8 @@ def refresh_monthly_income(month):
         execute("DELETE FROM monthly_incomes WHERE month=%s", (month,))
         execute(
             """INSERT INTO monthly_incomes(driver_id,month,gross_income,net_income)
-            SELECT a.driver_id,%s,SUM(t.cost),SUM(FLOOR(t.cost*0.8)) FROM service_acceptances a
-            JOIN trip_costs t ON t.request_id=a.request_id WHERE a.end_time >= %s AND a.end_time < DATE_ADD(%s, INTERVAL 1 MONTH)
+            SELECT a.driver_id,%s,SUM(t.cost),SUM(COALESCE(p.driver_net_irr,FLOOR(t.cost*0.8))) FROM service_acceptances a
+            JOIN trip_costs t ON t.request_id=a.request_id LEFT JOIN trip_pricing p ON p.request_id=a.request_id WHERE a.end_time >= %s AND a.end_time < DATE_ADD(%s, INTERVAL 1 MONTH)
             GROUP BY a.driver_id""",
             (month, month, month),
         )

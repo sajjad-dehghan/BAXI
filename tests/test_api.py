@@ -75,6 +75,7 @@ def test_server_rejects_outside_tehran_for_quote_request_and_driver(client):
                 "service": "baxi",
                 "pickup": [35.7005, 51.3376],
                 "dropoff": [34.798, 48.515],
+                **({"quote_id": "a" * 32} if path.endswith("requests") else {}),
             },
         )
         assert response.status_code == 400
@@ -97,6 +98,43 @@ def test_employee_reports_require_manager(client):
     )
     assert client.get("/api/staff/drivers").status_code == 200
     assert client.get("/api/staff/reports").status_code == 400
+
+
+def test_quote_booking_contract_rejects_client_amounts_and_missing_quote(
+    client, accounts
+):
+    from database import one
+
+    phone = one("SELECT phone_number FROM clients WHERE id=%s", (accounts["client"],))[
+        "phone_number"
+    ]
+    login(client, phone=phone)
+    draft = {
+        "service": "baxi",
+        "pickup": [35.7005, 51.3376],
+        "dropoff": [35.7112, 51.3786],
+        "payment": "cash",
+    }
+    offered = client.post("/api/quote", json=draft)
+    assert offered.status_code == 200
+    price = offered.json()
+    assert price["currency"] == "IRR" and price["policy_version"] == "tehran-demo-v1"
+    assert client.post("/api/requests", json=draft).status_code == 422
+    booking = {**draft, "quote_id": price["quote_id"]}
+    assert client.post("/api/requests", json={**booking, "cost": 1}).status_code == 422
+    assert (
+        client.post(
+            "/api/requests", json={**booking, "quote_id": "../tamper"}
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post("/api/requests", json={**booking, "quote_id": "f" * 32}).status_code
+        == 400
+    )
+    first = client.post("/api/requests", json=booking)
+    assert first.status_code == 200
+    assert client.post("/api/requests", json=booking).json() == first.json()
 
 
 def test_staff_report_and_document_access(client):

@@ -33,7 +33,8 @@ The diagram shows the active core. The SQL supports multiple numbered destinatio
 | `baxi`, `baxi_box`, `baxi_baar` | One vehicle row per driver/service table; capacity > 0, unique plate within table |
 | `service_requests` | Surrogate request ID; explicit service and state; passenger, optional assigned driver; lifecycle timestamps; validated coordinate ranges |
 | `destinations` | Request ID plus numbered stop; latitude, longitude and city |
-| Service details | Passenger/round trip, heavy cargo, or light cargo with demo insurance; nonnegative integer fare/value |
+| Service details | Passenger/round trip, heavy cargo, or light cargo with a retained legacy insurance column (zero for new trips); nonnegative integer fare/value |
+| `pricing_policies`, `fare_quotes`, `trip_pricing` | Version/content fingerprint, owned expiring quote and immutable booked fare/net/breakdown; one quote per trip |
 | `service_acceptances` | One completed settlement per request, driver and payment method; separate nullable 0–5 ratings |
 | `transactions` | Unique 32-hex key, positive integer amount, state and incoming/outgoing type; completed records cannot be updated |
 | `deposits`, `withdrawals` | Unique posting links, account ownership; triggers require the correct completed transaction type |
@@ -66,7 +67,7 @@ Original EER/ODT/PDF artifacts in `docs/legacy/database/` are preserved historic
 
 ## Upgrading an existing PWA demo
 
-Fresh volumes use the current `db/main.sql`. For an existing **rebuilt PWA** database from commit `f76614e` or earlier, back up both schemas and uploads, stop only the API/web containers, then apply `db/migrations/002-booking-context.sql` using a database administrator. This additive migration checks for each column before adding it; it can be run again. It adds nullable passenger payment and origin/destination labels, preserving existing trips and their settlement rules. It does not migrate the historical Qt schema.
+Fresh volumes use the current `db/main.sql`. For an existing **rebuilt PWA** database from commit `f76614e` or earlier, back up both schemas and uploads, stop only the API/web containers, then apply `db/migrations/002-booking-context.sql` using a database administrator. Then apply `db/migrations/003-pricing.sql` for versioned tariffs, expiring quotes and immutable fare/commission snapshots. It leaves legacy amounts unchanged and retains their 20% settlement fallback. Both migrations can be reapplied. The booking-context migration checks for each column before adding it; it can be run again. It adds nullable passenger payment and origin/destination labels, preserving existing trips and their settlement rules. It does not migrate the historical Qt schema.
 
 For the local Compose demo in PowerShell:
 
@@ -75,7 +76,10 @@ docker compose stop api web
 New-Item -ItemType Directory -Force artifacts | Out-Null
 docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysqldump -uroot --databases baxi_users baxi_staff --single-transaction --no-tablespaces | Set-Content -Encoding utf8 artifacts/pre-upgrade.sql
 Get-Content -Raw -Encoding utf8 db/migrations/002-booking-context.sql | docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysql --default-character-set=utf8mb4 -uroot
+Get-Content -Raw -Encoding utf8 db/migrations/003-pricing.sql | docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysql --default-character-set=utf8mb4 -uroot
 docker compose up --build -d
 ```
 
 Store that backup outside version control and retain the existing named volumes; no volume deletion or reset is required. The running restricted application user does not receive DDL permission. Old requests have null `preferred_payment` and preserve their previous end-of-trip payment selection; newly created UI requests record and enforce the passenger's choice.
+
+The API validates and registers the active pricing policy at startup. Its single-process maintenance task runs quote cleanup at startup and daily; booked quotes are retained. Change tariff versions before restarting the API; see [pricing policy](pricing.fa.md). No database event-scheduler or new runtime DDL grant is needed.

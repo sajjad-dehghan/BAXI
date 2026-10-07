@@ -2745,6 +2745,86 @@ tbody tr:last-child td {
 .fare-details p {
   margin-bottom: 0;
 }
+.fare-lines {
+  margin: 4px 0 12px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+.ride-sheet-content {
+  display: contents;
+}
+@media (max-width: 1100px) {
+  .booking-stage-ready .ride-sheet-content {
+    display: block;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    flex: 1 1 auto;
+  }
+  .booking-stage-ready .ride-sheet-content .ride-sheet-body {
+    max-height: none;
+    overflow: visible;
+  }
+  .booking-stage-ready .ride-sheet-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    gap: 8px 12px;
+  }
+  .booking-stage-ready .payment-trigger {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .booking-stage-ready .ride-total {
+    grid-column: 2;
+    grid-row: 1;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0;
+    margin: 0;
+  }
+  .booking-stage-ready .ride-total > span {
+    font-size: 10px;
+  }
+  .booking-stage-ready .ride-sheet-footer > .inline-error {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+  }
+  .booking-stage-ready .ride-sheet-footer > .primary {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  .booking-stage-ready .ride-sheet-footer > small {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+}
+.fare-lines > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0;
+}
+.fare-lines dd {
+  margin: 0;
+  white-space: nowrap;
+  color: #272431;
+}
+.fare-lines .fare-sum {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 10px;
+  font-weight: 600;
+}
+.driver-earnings {
+  background: #f7f7fa;
+  padding: 12px;
+  border-radius: 12px;
+}
 .journey-heading {
   display: flex;
   align-items: center;

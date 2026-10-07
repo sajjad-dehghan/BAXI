@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { ArrowLeft, CarFront, Check, Star } from "lucide-react";
-import { Role, Trip, money, serviceNames, stateNames, api } from "./lib";
+import { Role, Trip, money, toman, serviceNames, stateNames, api } from "./lib";
 import { Field } from "./ui";
+import { FareDetails } from "./FareDetails";
 export function TripCard({
   trip,
   role,
@@ -59,9 +60,26 @@ export function TripCard({
             : "هزینهٔ سفر"}
         </span>
         <strong>
-          {money(trip.cost)} <small>ریال</small>
+          {toman(trip.cost)} <small>تومان</small>
         </strong>
       </div>
+      {role === "driver" && (
+        <dl className="fare-lines driver-earnings">
+          <div>
+            <dt>کمیسیون بکسی</dt>
+            <dd>{toman(trip.commission_irr)} تومان</dd>
+          </div>
+          <div className="fare-sum">
+            <dt>دریافتی خالص شما</dt>
+            <dd>{toman(trip.driver_net_irr)} تومان</dd>
+          </div>
+        </dl>
+      )}
+      <FareDetails
+        breakdown={trip.pricing_breakdown}
+        cost={trip.cost}
+        version={trip.policy_version}
+      />
       {role === "client" && ["requested", "accepted"].includes(trip.state) && (
         <button
           className="secondary danger"
