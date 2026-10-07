@@ -5,10 +5,10 @@
 ## معرفی ویدیویی
 
 <p align="center">
-  <a href="media/baxi-overview.mp4"><img src="media/baxi-overview-cover.jpg" width="360" alt="معرفی بکسی؛ یک سفر کامل از نگاه مسافر و راننده"></a>
+  <a href="https://github.com/sajjad-dehghan/BAXI/raw/refs/heads/main/docs/media/baxi-overview.mp4"><img src="media/baxi-overview-cover.jpg" width="360" alt="معرفی بکسی؛ یک سفر کامل از نگاه مسافر و راننده"></a>
 </p>
 
-[تماشای معرفی ۸۲ ثانیه‌ای](media/baxi-overview.mp4) · [نسخهٔ بی‌صدا](media/baxi-overview-silent.mp4) · [زیرنویس فارسی](media/baxi-overview.fa.srt)
+[دریافت ویدیوی معرفی ۸۲ ثانیه‌ای](https://github.com/sajjad-dehghan/BAXI/raw/refs/heads/main/docs/media/baxi-overview.mp4) · [نسخهٔ بی‌صدا](https://github.com/sajjad-dehghan/BAXI/raw/refs/heads/main/docs/media/baxi-overview-silent.mp4) · [زیرنویس فارسی](media/baxi-overview.fa.srt)
 
 ویدیو انتخاب مسیر، قیمت پیش از درخواست، پذیرش راننده، شروع و پایان سفر، تسویه، امتیازدهی دوطرفه و سوابق را در یک سفر پیوسته نشان می‌دهد. خروجی عمودی ۱۰۸۰×۱۹۲۰ است و نوشته‌های تدوین و کاور فونت پینار دارند. ضبط از اجرای واقعی برنامه با حساب‌ها و پرداخت‌های آزمایشی انجام شده است. [جزئیات و فایل‌های معرفی](media/README.md).
 

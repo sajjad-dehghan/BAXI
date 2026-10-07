@@ -4,8 +4,8 @@ An **81.8-second portrait introduction** to the running BAXI demo, recorded on *
 
 ## Files
 
-- [Overview with music](baxi-overview.mp4): H.264, 1080 × 1920, 30 fps output, AAC stereo; original background composition.
-- [Silent edition](baxi-overview-silent.mp4): the same picture without an audio track.
+- [Download overview with music](https://github.com/sajjad-dehghan/BAXI/raw/refs/heads/main/docs/media/baxi-overview.mp4): H.264, 1080 × 1920, 30 fps output, AAC stereo; original background composition.
+- [Download silent edition](https://github.com/sajjad-dehghan/BAXI/raw/refs/heads/main/docs/media/baxi-overview-silent.mp4): the same picture without an audio track.
 - [Cover](baxi-overview-cover.jpg): 1080 × 1920 JPEG.
 - [Persian subtitles](baxi-overview.fa.srt): optional chapter titles; the same titles are already visible in the video.
 - [Suggested LinkedIn caption](linkedin-caption.fa.txt): a draft for the project owner's post, not an already published post.

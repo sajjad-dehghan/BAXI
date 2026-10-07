@@ -22,14 +22,14 @@
 ## Product overview
 
 <p align="center">
-  <a href="docs/media/baxi-overview.mp4"><img src="docs/media/baxi-overview-cover.jpg" width="360" alt="Watch BAXI: one complete mobile journey from the passenger and driver perspectives"></a>
+  <a href="https://github.com/sajjad-dehghan/BAXI/raw/refs/heads/main/docs/media/baxi-overview.mp4"><img src="docs/media/baxi-overview-cover.jpg" width="360" alt="Download BAXI: one complete mobile journey from the passenger and driver perspectives"></a>
 </p>
 
-**[▶ Watch the 82-second introduction](docs/media/baxi-overview.mp4)**
+**[Download the 82-second introduction · MP4](https://github.com/sajjad-dehghan/BAXI/raw/refs/heads/main/docs/media/baxi-overview.mp4)**
 
-<p dir="rtl"><strong>معرفی کلی بکسی؛ یک سفر کامل از دو نگاه.</strong> از انتخاب مبدأ و مقصد و دیدن قیمت تا پذیرش راننده، شروع و پایان سفر، تسویه، امتیازدهی دوطرفه و سوابق. برای تماشای ویدیو روی کاور یا لینک بالا بزنید.</p>
+<p dir="rtl"><strong>معرفی کلی بکسی؛ یک سفر کامل از دو نگاه.</strong> از انتخاب مبدأ و مقصد و دیدن قیمت تا پذیرش راننده، شروع و پایان سفر، تسویه، امتیازدهی دوطرفه و سوابق. برای دریافت و تماشای ویدیو روی کاور یا لینک بالا بزنید.</p>
 
-Recorded from the running app with synthetic accounts and simulated wallet payments. Portrait **1080 × 1920**, Persian titles in **Pinar**, original background music, and a **[silent edition](docs/media/baxi-overview-silent.mp4)**. **[Persian subtitles](docs/media/baxi-overview.fa.srt)** · **[Media details and LinkedIn caption](docs/media/README.md)**.
+Recorded from the running app with synthetic accounts and simulated wallet payments. Portrait **1080 × 1920**, Persian titles in **Pinar**, original background music, and a **[silent edition](https://github.com/sajjad-dehghan/BAXI/raw/refs/heads/main/docs/media/baxi-overview-silent.mp4)**. **[Persian subtitles](docs/media/baxi-overview.fa.srt)** · **[Media details and LinkedIn caption](docs/media/README.md)**.
 
 ## The product experience
 
