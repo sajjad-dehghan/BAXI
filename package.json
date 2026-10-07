@@ -4,12 +4,12 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/pwa.mjs icons && vite --host 127.0.0.1",
-    "build": "node scripts/pwa.mjs icons && tsc --noEmit && vite build && node scripts/pwa.mjs worker",
-    "preview": "vite preview --host 127.0.0.1",
-    "test:e2e": "playwright test",
-    "format": "prettier --write web tests/e2e scripts/pwa.mjs *.ts",
-    "format:check": "prettier --check web tests/e2e scripts/pwa.mjs *.ts"
+    "dev": "node frontend/scripts/pwa.mjs icons && vite --config frontend/vite.config.ts --host 127.0.0.1",
+    "build": "node frontend/scripts/pwa.mjs icons && tsc --project frontend/tsconfig.json --noEmit && vite build --config frontend/vite.config.ts && node frontend/scripts/pwa.mjs worker",
+    "preview": "vite preview --config frontend/vite.config.ts --host 127.0.0.1",
+    "test:e2e": "playwright test --config frontend/playwright.config.ts",
+    "format": "prettier --write frontend/src frontend/tests frontend/scripts frontend/*.ts",
+    "format:check": "prettier --check frontend/src frontend/tests frontend/scripts frontend/*.ts"
   },
   "dependencies": {
     "@fontsource/vazirmatn": "^5.3.0",
