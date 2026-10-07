@@ -1,0 +1,64 @@
+# Database model
+
+`db/main.sql` initializes two empty MySQL 8.4 schemas using InnoDB and utf8mb4. It does not drop, overwrite or migrate an existing installation. Bootstrap uses an administrative account; the running API uses the CRUD-only grants in `db/local-grants.sql`.
+
+```mermaid
+erDiagram
+  CLIENTS ||--o{ SERVICE_REQUESTS : places
+  DRIVERS o|--o{ SERVICE_REQUESTS : assigned
+  SERVICE_REQUESTS ||--|| DESTINATIONS : ends_at
+  SERVICE_REQUESTS ||--o| BAXI_TRIPS : passenger
+  SERVICE_REQUESTS ||--o| LIGHT_TRANSPORTS : box
+  SERVICE_REQUESTS ||--o| HEAVY_TRANSPORTS : baar
+  SERVICE_REQUESTS ||--o| SERVICE_ACCEPTANCES : settles
+  DRIVERS ||--o| BAXI : passenger_vehicle
+  DRIVERS ||--o| BAXI_BOX : courier_vehicle
+  DRIVERS ||--o| BAXI_BAAR : cargo_vehicle
+  CLIENTS ||--o{ DEPOSITS : receives
+  DRIVERS ||--o{ WITHDRAWALS : requests
+  TRANSACTIONS ||--o| DEPOSITS : posts
+  TRANSACTIONS ||--o| WITHDRAWALS : posts
+  EMPLOYEES o|--o{ DRIVERS : verifies
+```
+
+The diagram shows the active core. The SQL supports multiple numbered destinations; the current API creates one destination per request. Exactly one service-detail row is created by the application transaction; the schema alone does not prohibit an administrator from inserting incompatible subtype rows.
+
+## Key records
+
+| Record | Purpose and important constraints |
+| --- | --- |
+| `employees` in `baxi_staff` | Personnel code, unique IBAN, scrypt password, department/position, nonnegative salary |
+| `clients`, `drivers` | Unique normalized ten-digit Iranian phone; integer, nonnegative wallet; demographic fields |
+| `drivers` | Pending/approved/rejected status, rejection reason, private document references, verifier; nullable last reported coordinates |
+| `baxi`, `baxi_box`, `baxi_baar` | One vehicle row per driver/service table; capacity > 0, unique plate within table |
+| `service_requests` | Surrogate request ID; explicit service and state; passenger, optional assigned driver; lifecycle timestamps; validated coordinate ranges |
+| `destinations` | Request ID plus numbered stop; latitude, longitude and city |
+| Service details | Passenger/round trip, heavy cargo, or light cargo with demo insurance; nonnegative integer fare/value |
+| `service_acceptances` | One completed settlement per request, driver and payment method; separate nullable 0–5 ratings |
+| `transactions` | Unique 32-hex key, positive integer amount, state and incoming/outgoing type; completed records cannot be updated |
+| `deposits`, `withdrawals` | Unique posting links, account ownership; triggers require the correct completed transaction type |
+| `monthly_incomes` | Unique driver/month, gross and net summaries, recomputed from completed settlements |
+
+The remaining historical domain concepts—referrals, reports, addresses, compliments/complaints, company bonuses and compensatory deposits—have schema support and some reporting/triggers, but do not have complete public API/UI workflows. Do not infer a working product feature from a table's existence.
+
+## Integrity boundaries
+
+Application transactions implement the allowed trip transitions, one active trip per account, eligibility, capacity and ownership. Foreign keys/checks enforce basic shape and wallet lower bounds. Raw direct SQL is an administrator capability, outside the authenticated API contract. Wallet triggers apply only when a settlement/posting link is inserted, and failures roll back the enclosing transaction.
+
+Coordinates are `(latitude, longitude)` in Python/forms, and `POINT(longitude, latitude)` in MySQL distance functions. The nearby cutoff is 5,000 metres. A regression test uses an eastward boundary case where swapping axes would change eligibility. This follows [MySQL's spatial function documentation](https://dev.mysql.com/doc/refman/8.4/en/spatial-convenience-functions.html).
+
+## Monthly income
+
+Run after the relevant month’s activity:
+
+```sh
+python scripts/monthly_income.py 2026-10-01
+```
+
+The job replaces only that month's summary in one transaction. It uses `SUM` per settlement and `UNION ALL` through the cost view, retaining distinct trips with equal fares. No global event-scheduler permission is required. The seed creates an initial summary; subsequent trips need the command to refresh it.
+
+## Reports
+
+The fixed catalog in `src/reports.py` contains 20 parameter-free, read-only queries. Only an HR department manager can execute them. The PWA displays each report's columns and handles empty results; it never accepts arbitrary SQL from a browser. Report IDs and Persian names are exposed by `/api/staff/reports`.
+
+Original EER/ODT/PDF artifacts in `docs/legacy/database/` are preserved historical materials and do not describe this replacement schema.

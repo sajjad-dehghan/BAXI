@@ -1,9 +1,0 @@
-pyqt6
-pyqt6-tools
-mysql.connector
-PyQtWebEngine
-requests
-geopy.distance
-string
-secrets
-datetime
