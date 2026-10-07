@@ -8,7 +8,7 @@ The dashed line joins the selected points and represents **straight-line distanc
 
 ## Boundary provenance and attribution
 
-`public/tehran-area.json` is the Tehran administrative city polygon from [OpenStreetMap relation 6663864](https://www.openstreetmap.org/relation/6663864), retrieved once through the official Nominatim endpoint on 2026-10-07. Its source metadata is included in the GeoJSON. GeoJSON coordinates are longitude/latitude; app coordinates are latitude/longitude. The ring is checked with a boundary-inclusive point-in-polygon test in Python and TypeScript.
+`shared/geo/tehran-area.json` is the Tehran administrative city polygon from [OpenStreetMap relation 6663864](https://www.openstreetmap.org/relation/6663864), retrieved once through the official Nominatim endpoint on 2026-10-07. Its source metadata is included in the GeoJSON. GeoJSON coordinates are longitude/latitude; app coordinates are latitude/longitude. The ring is checked with a boundary-inclusive point-in-polygon test in Python and TypeScript.
 
 Boundary data: **© OpenStreetMap contributors**, available under the [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). See [OpenStreetMap copyright and attribution](https://www.openstreetmap.org/copyright). This data license does not assign a license to the rest of BAXI's code.
 

@@ -46,22 +46,22 @@ jobs:
         env:
           MYSQL_PWD: baxi-ci-only
         run: |
-          mysql --protocol=TCP -h 127.0.0.1 -uroot < db/main.sql
-          mysql --protocol=TCP -h 127.0.0.1 -uroot < db/migrations/003-pricing.sql
-          mysql --protocol=TCP -h 127.0.0.1 -uroot < db/migrations/003-pricing.sql
+          mysql --protocol=TCP -h 127.0.0.1 -uroot < database/main.sql
+          mysql --protocol=TCP -h 127.0.0.1 -uroot < database/migrations/003-pricing.sql
+          mysql --protocol=TCP -h 127.0.0.1 -uroot < database/migrations/003-pricing.sql
           mysql --protocol=TCP -h 127.0.0.1 -uroot -e "CREATE USER 'baxi'@'%' IDENTIFIED BY 'baxi-ci-app-only';"
-          mysql --protocol=TCP -h 127.0.0.1 -uroot < db/local-grants.sql
-          python scripts/seed_demo.py
+          mysql --protocol=TCP -h 127.0.0.1 -uroot < database/local-grants.sql
+          python backend/scripts/seed_demo.py
       - name: Python checks and real MySQL regression tests
         run: |
-          ruff check src scripts tests
-          ruff format --check src scripts tests
+          ruff check backend
+          ruff format --check backend
           python -m pytest -q
       - name: Build and exercise the production PWA
         run: |
           npm run format:check
           npm run build
-          python -m uvicorn api:app --app-dir src --host 127.0.0.1 --port 8000 > /tmp/baxi-api.log 2>&1 &
+          python -m uvicorn baxi.api:app --app-dir backend --host 127.0.0.1 --port 8000 > /tmp/baxi-api.log 2>&1 &
           for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/health && break || sleep 1; done
           npm run test:e2e
       - name: Upload browser diagnostics
@@ -69,4 +69,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: browser-diagnostics
-          path: test-results/
+          path: artifacts/test-results/

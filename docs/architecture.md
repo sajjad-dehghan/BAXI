@@ -14,14 +14,16 @@ flowchart LR
 
 ## Responsibilities
 
-- `web/`: separate passenger, driver, registration, wallet, staff and authentication screens; `RoutePicker.tsx` provides a lazy-loaded Leaflet map with sequential origin/destination confirmation, while `ui.tsx` provides shared controls and the decorative sign-in illustration; `lib.ts` contains API transport, types, formatting and Persian error translation.
+The [repository structure](repository-structure.md) separates runtime code, infrastructure, shared data and tests. Root npm commands orchestrate the frontend; Python tooling targets the `baxi` package under `backend`.
+
+- `frontend/src/features/`: separate passenger, driver, registration, wallet, staff and authentication screens; `shared/map/RoutePicker.tsx` provides a lazy-loaded Leaflet map with sequential origin/destination confirmation, while `shared/ui/ui.tsx` provides shared controls and the decorative sign-in illustration; `shared/lib/client.ts` contains API transport, types, formatting and Persian error translation.
 - `NewTrip.tsx` / `PassengerJourney.tsx`: a controlled booking draft, map and fixed-action sheet, followed by assigned-vehicle status, cancellation dialog and inline receipt/rating. Confirmed draft state survives wallet navigation only in memory.
-- `places.py`: explicit cached public-place geocoding with a shared single-process upstream rate limit and independently checked Tehran results.
-- `api.py`: validates request shapes, looks up server-side session identity, enforces role/ownership, serves authorized documents and exposes a fixed report catalog. The caller cannot supply another account ID for an owned operation.
-- `service_area.py` / `web/serviceArea.ts`: point-in-polygon checks against the same versioned Tehran GeoJSON; both trip endpoints and driver availability must be inside the city.
-- `services.py`: domain validation, state transitions, eligibility, transaction boundaries and explicit locks.
-- `database.py` / `db_session.py`: parameterized queries, short-lived connections and a context-local shared transaction. Importing a module never connects or writes data.
-- `db/main.sql`: foreign keys, checks, uniqueness, trip-cost views and wallet posting triggers; integer IRR avoids binary floating-point money.
+- `backend/baxi/geo/places.py`: explicit cached public-place geocoding with a shared single-process upstream rate limit and independently checked Tehran results.
+- `backend/baxi/api.py`: validates request shapes, looks up server-side session identity, enforces role/ownership, serves authorized documents and exposes a fixed report catalog. The caller cannot supply another account ID for an owned operation.
+- `backend/baxi/geo/service_area.py` / `frontend/src/shared/map/serviceArea.ts`: point-in-polygon checks against the same versioned Tehran GeoJSON; both trip endpoints and driver availability must be inside the city.
+- `backend/baxi/application/services.py`: domain validation, state transitions, eligibility, transaction boundaries and explicit locks.
+- `backend/baxi/db/queries.py` / `backend/baxi/db/session.py`: parameterized queries, short-lived connections and a context-local shared transaction. Importing a module never connects or writes data.
+- `database/main.sql`: foreign keys, checks, uniqueness, trip-cost views and wallet posting triggers; integer IRR avoids binary floating-point money.
 
 ## Trip state
 
@@ -41,7 +43,7 @@ One active request per passenger and one active accepted/in-progress trip per dr
 
 ## Money
 
-The server's versioned `pricing-policy.json` defines sample base, per-kilometre and minimum fares, weight bands, commission and half-up rounding. Passenger and WOMEN tariffs match. Distance is geodesic, not a road route; cargo value is informational and no insurance premium is charged. See the complete [Persian pricing policy](pricing.fa.md) for tariff amounts and examples.
+The server's versioned `backend/baxi/pricing/policy.json` defines sample base, per-kilometre and minimum fares, weight bands, commission and half-up rounding. Passenger and WOMEN tariffs match. Distance is geodesic, not a road route; cargo value is informational and no insurance premium is charged. See the complete [Persian pricing policy](pricing.fa.md) for tariff amounts and examples.
 
 `POST /api/quote` persists a client-owned, draft-bound five-minute quote. Booking requires its ID, rejects browser-supplied amounts and locks the client and quote before creating one request and its immutable pricing snapshot. Retries return the same request, including after expiry; a different trip needs a fresh quote. A policy version cannot be reused with different content. An already issued, unexpired quote remains valid after a new policy is loaded. Startup checks policy consistency; a single-process maintenance task removes only unbooked quotes expired for over a day at startup and every 24 hours, retrying database failures after one hour.
 

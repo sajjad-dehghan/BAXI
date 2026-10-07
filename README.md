@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/icons/icon-192.png" width="76" height="76" alt="BAXI app icon">
+  <img src="frontend/public/icons/icon-192.png" width="76" height="76" alt="BAXI app icon">
   <h1>BAXI · بکسی</h1>
   <p><strong>Choose two places. Know the price. Follow the journey.</strong></p>
   <p>A Persian, map-first ride and cargo PWA for Tehran.<br>Rebuilt from an undergraduate database project, with product decisions and transactional behavior you can inspect.</p>
@@ -137,7 +137,7 @@ BOX weight bands are up to **5 / 10 / 20 kg**; BAAR bands are up to **500 / 1,00
 
 Waiting and pre-start cancellation are free. There is no demand surge, traffic fee, toll, added tax, discount or real insurance in this version. Legacy journeys retain their amounts and previous settlement rules, without invented itemized receipts.
 
-**Policy source:** [`src/pricing-policy.json`](src/pricing-policy.json) · **Engine:** [`src/pricing.py`](src/pricing.py) · **Full Persian policy:** [docs/pricing.fa.md](docs/pricing.fa.md)
+**Policy source:** [`backend/baxi/pricing/policy.json`](backend/baxi/pricing/policy.json) · **Engine:** [`backend/baxi/pricing/engine.py`](backend/baxi/pricing/engine.py) · **Full Persian policy:** [docs/pricing.fa.md](docs/pricing.fa.md)
 
 ## Under the interface
 
@@ -190,9 +190,9 @@ Then install, seed and start the API:
 
 ```sh
 python -m pip install -r requirements-dev.txt
-python scripts/seed_demo.py
+python backend/scripts/seed_demo.py
 npm ci
-python -m uvicorn api:app --app-dir src --host 127.0.0.1 --port 8000
+python -m uvicorn baxi.api:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
 In a second terminal, run `npm run dev` and open **[127.0.0.1:5173](http://127.0.0.1:5173)**. Vite proxies `/api` to the Python server. Interactive API docs are at **[127.0.0.1:8000/api/docs](http://127.0.0.1:8000/api/docs)**.
@@ -215,8 +215,8 @@ The **2026-10-07 verification record** includes **101 Python tests with real MyS
 Coverage includes complete passenger/driver journeys, cash and wallet settlement, ownership, competing acceptance, retries, all 20 reports, weight boundaries, expired quotes, preserved historical amounts and repeatable migrations. Layout checks cover **360, 390, 768 and 1440 px**. Automated accessibility checks found no violations on the tested screens; physical-device installation and a full manual accessibility audit remain outside that evidence.
 
 ```sh
-ruff check src scripts tests
-ruff format --check src scripts tests
+ruff check backend
+ruff format --check backend
 npm run format:check
 python -m pytest -q
 npm run build
@@ -240,19 +240,32 @@ The external GitGuardian check still requires maintainer classification of three
 
 ## Find your way around
 
+[Repository structure and placement rules →](docs/repository-structure.md)
+
 ```text
-web/                    Screens, shared UI, booking flow and API client
-src/                    API, auth, application services and pricing engine
-  pricing-policy.json   Versioned rates, limits, commission and rounding
-  pricing.py            Deterministic fare calculation and breakdown
-  services.py           Transactional booking, dispatch and settlement
-db/                     MySQL schema, views, triggers and additive migrations
-scripts/                Synthetic seed, monthly income and PWA build utilities
-tests/                  Unit, MySQL/API and Playwright tests
-public/                 Manifest, install icons and Tehran boundary
-assets/demo-documents/  Explicitly synthetic verification documents
-docs/screenshots/       Captures from the running application
-docs/legacy/            Preserved university design and database artifacts
+backend/
+  baxi/                 Namespaced Python application
+    api.py              HTTP endpoints, sessions and record ownership
+    application/        Booking, dispatch, settlement and reports
+    core/               Configuration, security and phone verification
+    db/                 Parameterized queries and transaction sessions
+    geo/                Coordinates, place search and coverage validation
+    pricing/            Fare engine and versioned policy.json
+  scripts/              Synthetic seed, API startup and monthly income
+  tests/                Unit tests and real MySQL/API integration tests
+frontend/
+  src/app/              App entry, shell and global styles
+  src/features/         Auth, booking, driver, trips, wallet and staff
+  src/shared/           Reusable UI, map components and client utilities
+  public/               Manifest, install icons and public assets
+  scripts/              PWA asset and service-worker generation
+  tests/e2e/            Playwright journey and accessibility checks
+database/               Fresh schema, restricted grants and migrations
+infra/                  Dockerfiles and nginx configuration
+shared/geo/             One Tehran boundary consumed by both applications
+assets/demo-documents/  Synthetic fixtures; persisted document paths stay stable
+docs/                   Product, architecture, policy and verification evidence
+  legacy/               Preserved university design and database artifacts
 ```
 
 | Read next | What it explains |

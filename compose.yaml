@@ -2,7 +2,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: infra/docker/web.Dockerfile
     ports:
       - "127.0.0.1:8080:80"
     depends_on:
@@ -11,7 +11,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: infra/docker/api.Dockerfile
       args:
         PIP_INDEX_URL: ${BAXI_PIP_INDEX_URL:-https://pypi.org/simple}
     environment:
@@ -50,8 +50,8 @@ services:
       MYSQL_PASSWORD: baxi-local-demo-only
     volumes:
       - baxi_mysql:/var/lib/mysql
-      - ./db/main.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./db/local-grants.sql:/docker-entrypoint-initdb.d/02-grants.sql:ro
+      - ./database/main.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/local-grants.sql:/docker-entrypoint-initdb.d/02-grants.sql:ro
     healthcheck:
       test:
         [

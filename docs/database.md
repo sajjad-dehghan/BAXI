@@ -1,6 +1,6 @@
 # Database model
 
-`db/main.sql` initializes two empty MySQL 8.4 schemas using InnoDB and utf8mb4. It does not drop, overwrite or migrate an existing installation. Bootstrap uses an administrative account; the running API uses the CRUD-only grants in `db/local-grants.sql`.
+`database/main.sql` initializes two empty MySQL 8.4 schemas using InnoDB and utf8mb4. It does not drop, overwrite or migrate an existing installation. Bootstrap uses an administrative account; the running API uses the CRUD-only grants in `database/local-grants.sql`.
 
 ```mermaid
 erDiagram
@@ -53,21 +53,21 @@ Coordinates are `(latitude, longitude)` in Python/forms, and `POINT(longitude, l
 Run after the relevant month’s activity:
 
 ```sh
-python scripts/monthly_income.py 2026-10-01
+python backend/scripts/monthly_income.py 2026-10-01
 ```
 
 The job replaces only that month's summary in one transaction. It uses `SUM` per settlement and `UNION ALL` through the cost view, retaining distinct trips with equal fares. No global event-scheduler permission is required. The seed creates an initial summary; subsequent trips need the command to refresh it.
 
 ## Reports
 
-The fixed catalog in `src/reports.py` contains 20 parameter-free, read-only queries. Only an HR department manager can execute them. The PWA displays each report's columns and handles empty results; it never accepts arbitrary SQL from a browser. Report IDs and Persian names are exposed by `/api/staff/reports`.
+The fixed catalog in `backend/baxi/application/reports.py` contains 20 parameter-free, read-only queries. Only an HR department manager can execute them. The PWA displays each report's columns and handles empty results; it never accepts arbitrary SQL from a browser. Report IDs and Persian names are exposed by `/api/staff/reports`.
 
 Original EER/ODT/PDF artifacts in `docs/legacy/database/` are preserved historical materials and do not describe this replacement schema.
 
 
 ## Upgrading an existing PWA demo
 
-Fresh volumes use the current `db/main.sql`. For an existing **rebuilt PWA** database from commit `f76614e` or earlier, back up both schemas and uploads, stop only the API/web containers, then apply `db/migrations/002-booking-context.sql` using a database administrator. Then apply `db/migrations/003-pricing.sql` for versioned tariffs, expiring quotes and immutable fare/commission snapshots. It leaves legacy amounts unchanged and retains their 20% settlement fallback. Both migrations can be reapplied. The booking-context migration checks for each column before adding it; it can be run again. It adds nullable passenger payment and origin/destination labels, preserving existing trips and their settlement rules. It does not migrate the historical Qt schema.
+Fresh volumes use the current `database/main.sql`. For an existing **rebuilt PWA** database from commit `f76614e` or earlier, back up both schemas and uploads, stop only the API/web containers, then apply `database/migrations/002-booking-context.sql` using a database administrator. Then apply `database/migrations/003-pricing.sql` for versioned tariffs, expiring quotes and immutable fare/commission snapshots. It leaves legacy amounts unchanged and retains their 20% settlement fallback. Both migrations can be reapplied. The booking-context migration checks for each column before adding it; it can be run again. It adds nullable passenger payment and origin/destination labels, preserving existing trips and their settlement rules. It does not migrate the historical Qt schema.
 
 For the local Compose demo in PowerShell:
 
@@ -75,8 +75,8 @@ For the local Compose demo in PowerShell:
 docker compose stop api web
 New-Item -ItemType Directory -Force artifacts | Out-Null
 docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysqldump -uroot --databases baxi_users baxi_staff --single-transaction --no-tablespaces | Set-Content -Encoding utf8 artifacts/pre-upgrade.sql
-Get-Content -Raw -Encoding utf8 db/migrations/002-booking-context.sql | docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysql --default-character-set=utf8mb4 -uroot
-Get-Content -Raw -Encoding utf8 db/migrations/003-pricing.sql | docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysql --default-character-set=utf8mb4 -uroot
+Get-Content -Raw -Encoding utf8 database/migrations/002-booking-context.sql | docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysql --default-character-set=utf8mb4 -uroot
+Get-Content -Raw -Encoding utf8 database/migrations/003-pricing.sql | docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysql --default-character-set=utf8mb4 -uroot
 docker compose up --build -d
 ```
 

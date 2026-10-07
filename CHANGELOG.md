@@ -1,5 +1,14 @@
 # Changelog
 
+## Repository organization — 2026-10-07
+
+- Separate backend, frontend, database, infrastructure and shared geographic data.
+- Namespace Python code under `baxi` with application, core, database, geo and pricing modules; split unit and integration tests.
+- Group frontend screens by feature, with reusable UI/maps/client utilities and colocated Vite/TypeScript/Playwright configuration.
+- Update imports, CLI entry points, Docker/Compose, PWA generation, CI and documentation together; retain root install commands.
+- Preserve schema/tariff/boundary contents, stored document references, existing volumes and historical artifacts.
+- Document placement rules and generated-file boundaries in `docs/repository-structure.md`.
+
 ## Versioned sample pricing — 2026-10-07
 
 - Add base/minimum fares, cargo weight bands and half-up rounding; remove the unsupported demo insurance premium.

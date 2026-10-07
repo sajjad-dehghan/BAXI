@@ -1,6 +1,6 @@
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src", "."]
+testpaths = ["backend/tests"]
+pythonpath = ["backend", "."]
 markers = ["integration: requires an initialized disposable MySQL database"]
 
 [tool.ruff]
