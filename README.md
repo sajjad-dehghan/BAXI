@@ -1,3 +1,44 @@
+<!-- visual-showroom:start -->
+<p align="center">
+  <img src="docs/showroom/readme-banner.svg" alt="BAXI — repository cover" width="100%">
+</p>
+
+<p align="center">
+  <strong>BAXI</strong><br>
+  TOOLS &amp; INTERFACES
+</p>
+
+<p align="center">
+  <a href="https://sajjad-dehghan-personal-site.prisoner-sedwna.workers.dev/projects/baxi"><strong>Explore the showroom ↗</strong></a> ·
+  <a href="#implementation--original-documentation">Setup &amp; implementation ↓</a>
+</p>
+
+A ride and freight prototype, now with a web interface for passenger, driver, wallet and HR journeys. The showroom documents the current web edition with synthetic data; the historical PyQt/MySQL desktop source is preserved.
+
+## Visual tour
+
+[![BAXI web edition · map and upfront fare with synthetic data](docs/showroom/readme-view-1.png)](https://sajjad-dehghan-personal-site.prisoner-sedwna.workers.dev/projects/baxi)
+
+<p align="center">
+  <a href="https://sajjad-dehghan-personal-site.prisoner-sedwna.workers.dev/projects/baxi"><img src="docs/showroom/readme-view-2.png" alt="Service selection and final fare" width="48%"></a>
+  <a href="https://sajjad-dehghan-personal-site.prisoner-sedwna.workers.dev/projects/baxi"><img src="docs/showroom/readme-view-3.png" alt="Mobile price breakdown" width="48%"></a>
+  <a href="https://sajjad-dehghan-personal-site.prisoner-sedwna.workers.dev/projects/baxi"><img src="docs/showroom/readme-view-4.jpg" alt="Nearby offer, commission and net earnings" width="48%"></a>
+</p>
+
+1. BAXI web edition · map and upfront fare with synthetic data
+2. Service selection and final fare
+3. Mobile price breakdown
+4. Nearby offer, commission and net earnings
+
+Current web screenshots; synthetic accounts, documents, journeys and fares. No live SMS, banking or street routing. Map: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). The original README below contains all 31 views.
+
+## Implementation & original documentation
+
+The existing run instructions, architecture, limitations and credits are preserved below.
+
+---
+<!-- visual-showroom:end -->
+
 <div align="center">
   <img src="frontend/public/icons/icon-192.png" width="76" height="76" alt="BAXI app icon">
   <h1>BAXI · بکسی</h1>
