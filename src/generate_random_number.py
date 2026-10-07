@@ -1,83 +1,52 @@
+"""Demo OTPs: two minute expiry, single use, five attempts, resend cooldown."""
+
+import hmac
 import secrets
-import string
+import time
+
+from config import settings
+from security import normalize_phone
 
 
-class GenerateRandom:
-    password_code = 0
-    referral_code = 0
-    tracking_code = 0
+class VerificationCodes:
+    def __init__(self, clock=time.monotonic):
+        self.clock = clock
+        self._codes = {}
+        self._last_sent = {}
 
-    def gen_password_code_rand(self):
-        # letters = string.ascii_letters
+    def issue(self, phone):
+        if not settings().demo:
+            raise ValueError(
+                "SMS delivery is not implemented. Use the local demo mode."
+            )
+        phone = normalize_phone(phone)
+        now = self.clock()
+        self._codes = {
+            key: value
+            for key, value in self._codes.items()
+            if value[1] > now and value[2] > 0
+        }
+        self._last_sent = {
+            key: value for key, value in self._last_sent.items() if now - value < 120
+        }
+        if len(self._codes) >= 10000:
+            raise ValueError("Too many active verification codes. Try again later.")
+        if phone in self._last_sent and self.clock() - self._last_sent[phone] < 30:
+            raise ValueError("Wait 30 seconds before requesting another code.")
+        code = f"{secrets.randbelow(1000000):06d}"
+        self._codes[phone] = [code, self.clock() + 120, 5]
+        self._last_sent[phone] = self.clock()
+        print(f"[LOCAL DEMO ONLY] OTP for 0{phone}: {code}")
+        return code
 
-        digits = string.digits
-
-        # special_chars = string.punctuation
-
-        selection_list = digits
-
-        password_len = 4
-
-        password = ''
-        for i in range(password_len):
-            password += ''.join(secrets.choice(selection_list))
-
-        self.password_code = password
-        print('password: ', password)
-
-    def gen_referral_code_rand(self):
-        # letters = string.ascii_letters
-
-        digits = string.digits
-
-        # special_chars = string.punctuation
-
-        selection_list = digits
-
-        referral_code_len = 8
-
-        referral_code = ''
-        for i in range(referral_code_len):
-            referral_code += ''.join(secrets.choice(selection_list))
-
-        self.referral_code = referral_code
-        print("rc", type(referral_code))
-        print('referral_code: ', referral_code)
-        print(type(referral_code))
-
-    def gen_tracking_code_rand(self):
-
-        # letters = string.ascii_letters
-
-        digits = string.digits
-
-        # special_chars = string.punctuation
-
-        selection_list = digits
-
-        tracking_code_len = 15
-
-        tracking_code = ''
-        for i in range(tracking_code_len):
-            tracking_code += ''.join(secrets.choice(selection_list))
-
-        self.tracking_code = tracking_code
-        print('tracking_code: ', tracking_code)
-
-
-def gen_2digit_rand():
-    # letters = string.ascii_letters
-
-    digits = string.digits
-
-    # special_chars = string.punctuation
-
-    selection_list = digits
-
-    _2digit_len = 2
-
-    _2digit = ''
-    for i in range(_2digit_len):
-        _2digit += ''.join(secrets.choice(selection_list))
-    print('3')
-    return _2digit
+    def verify(self, phone, code):
+        phone = normalize_phone(phone)
+        record = self._codes.get(phone)
+        if not record or self.clock() >= record[1] or record[2] <= 0:
+            self._codes.pop(phone, None)
+            return False
+        record[2] -= 1
+        if hmac.compare_digest(str(code), record[0]):
+            del self._codes[phone]
+            return True
+        return False

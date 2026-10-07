@@ -1,0 +1,74 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      args:
+        PIP_INDEX_URL: ${BAXI_PIP_INDEX_URL:-https://pypi.org/simple}
+    environment:
+      BAXI_DB_HOST: mysql
+      BAXI_DB_PORT: 3306
+      BAXI_DB_USER: baxi
+      BAXI_DB_PASSWORD: baxi-local-demo-only
+      BAXI_DEMO_MODE: "true"
+      BAXI_SEED_DEMO: "true"
+      BAXI_COOKIE_SECURE: "false"
+      BAXI_ALLOWED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+    volumes:
+      - baxi_uploads:/app/data/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+  mysql:
+    image: mysql:8.4
+    ports:
+      - "127.0.0.1:3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: baxi-local-root-only
+      MYSQL_USER: baxi
+      MYSQL_PASSWORD: baxi-local-demo-only
+    volumes:
+      - baxi_mysql:/var/lib/mysql
+      - ./db/main.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/local-grants.sql:/docker-entrypoint-initdb.d/02-grants.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysql",
+          "--protocol=TCP",
+          "-h",
+          "127.0.0.1",
+          "-ubaxi",
+          "-pbaxi-local-demo-only",
+          "-Dbaxi_users",
+          "-e",
+          "SELECT 1 FROM service_requests LIMIT 1",
+        ]
+      start_period: 20s
+      interval: 5s
+      timeout: 3s
+      retries: 30
+volumes:
+  baxi_mysql:
+  baxi_uploads:

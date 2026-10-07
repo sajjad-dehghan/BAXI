@@ -1,0 +1,6 @@
+fastapi==0.142.2
+uvicorn==0.54.0
+mysql-connector-python==26.7.0
+requests==2.34.2
+geopy==2.5.0
+python-multipart==0.0.32

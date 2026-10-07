@@ -1,105 +1,108 @@
-# BAXI
+# BAXI · بکسی
 
-BAXI is a prototype ride-hailing and freight app built for a database course. It is a PyQt6 desktop app with a phone-sized window, backed by MySQL, and it connects clients with drivers for four transport services.
+A Persian, right-to-left ride and cargo **Progressive Web App**, rebuilt from a university database project. One responsive interface serves passengers, drivers and staff, backed by a Python API and MySQL transactions.
 
-## Overview
+[راهنمای فارسی](docs/README.fa.md) · [روایت پروژه](docs/case-study.fa.md) · [Architecture](docs/architecture.md) · [Database](docs/database.md) · [Security](SECURITY.md) · [Verification](docs/verification.md)
 
-Clients can request one of four services:
+![Passenger interface](docs/screenshots/passenger-desktop.png)
 
-| Service | Purpose |
-| --- | --- |
-| **BAXI** | Passenger rides |
-| **BAXI WOMEN** | Passenger rides with female drivers and riders only |
-| **BAXI BOX** | Light goods delivery (motorbike) |
-| **BAXI BAAR** | Heavy cargo transport |
+## Run the complete local demo
 
-When a client places a request, drivers who meet the service requirements can accept it and receive the pickup and drop-off coordinates. After a trip, drivers and clients can rate each other. A separate admin and employee app handles staff and driver verification.
+Install Docker Desktop with Compose, then run from the repository root:
 
-> Development is still in progress. Some screens and features are not finished or have not been fully tested.
-
-## Features
-
-### User app (`BAXI_MinWindow.py`)
-
-- Sign-up and sign-in by phone number with a generated 4-digit verification code. The code is printed to the console because SMS is not connected.
-- Choose a role: client or driver.
-- **Driver onboarding:** name, gender, birth date, national ID, document photos, bank account (IBAN) number, then vehicle details for the chosen service (name, color, plate, fuel type, capacity, production date).
-- **Client home:** request any of the four services, see the fare estimate, and cancel a booking.
-- **Driver home:** go on or off duty, accept a request, and mark each step of the trip (arrived at pickup, passenger on board, arrived at destination). Rate the trip at the end.
-- Account settings, wallet and payment method screens, and trip history.
-- Distances are calculated with `geopy`, and fares use a per-kilometre rate for each service type. Reverse geocoding uses the Neshan API.
-
-### Admin and employee app (`BAXI_Admin_Employee_MinWindow.py`)
-
-- Admin and employee sign-in with personnel code and password.
-- Admins can hire new employees.
-- Employees can review unverified drivers' documents and approve or reject them.
-- A query screen is planned for the 20 report queries in `database.py`. Its buttons are not connected yet.
-
-### Database (`db/main.sql`)
-
-- Two MySQL schemas:
-  - `baxi_staff`: employees, and a `managers` view
-  - `baxi_users`: clients, drivers, vehicles for each service, service requests, trips, heavy and light transports, service acceptances, transactions, deposits and withdrawals, referrals, addresses and destinations, compliments and complaints, reports, company and compensatory deposits, monthly incomes
-- Triggers keep wallets up to date after service acceptances, deposits and withdrawals.
-- The EER diagram and table specifications are in `EER/`.
-
-## Tech stack
-
-- Python 3.10+
-- PyQt6 (screens designed in Qt Designer, `.ui` files in `qt_ui/`)
-- MySQL through `mysql-connector-python`
-- `requests` (Neshan reverse geocoding) and `geopy` (distance calculation)
-
-## Project structure
-
-```text
-.
-├── EER/                 # EER diagram (draw.io) and table specifications
-├── db/
-│   ├── main.sql         # Schemas, tables, views and triggers
-│   └── data.xlsx        # Sample data
-├── qt_ui/               # Qt Designer sources for both apps
-├── requirement.txt
-└── src/
-    ├── BAXI_MinWindow.py                 # User app entry point (client and driver)
-    ├── BAXI.py                           # Generated UI for the user app
-    ├── BAXI_Admin_Employee_MinWindow.py  # Admin and employee app entry point
-    ├── BAXI_Admin_Employee.py            # Generated UI for the admin app
-    ├── database.py                       # MySQL connection, inserts, lookups, report queries
-    ├── set_info.py                       # Builds the dicts that are inserted into the database
-    ├── client.py, driver.py, employee.py, trip.py
-    ├── verify.py                         # Sign-in and verification helpers
-    ├── generate_random_number.py         # Verification codes and random IDs
-    ├── get_lat_lon_info.py               # Reverse geocoding, distance and fare functions
-    ├── show_map.py                       # Experimental embedded map window (QtWebEngine)
-    └── test_server.py                    # Manual database test script
+```sh
+docker compose up --build -d
 ```
 
-## Getting started
+Open **[http://localhost:8080](http://localhost:8080)**. The API, frontend and database start together; synthetic accounts, documents and completed journeys are seeded automatically. The app is exposed on the local machine only. The first build needs internet access to download dependencies and container images.
 
-1. **Set up MySQL.** Run `db/main.sql` on a MySQL server to create the `baxi_staff` and `baxi_users` schemas.
-2. **Point the app at your server.** The connection settings are in `create_connection()` in `src/database.py`. Change them to your own host, port and user, preferably by loading them from environment variables instead of writing them in the code.
-3. **Set a geocoding key.** Put your own Neshan API key in `src/get_lat_lon_info.py`.
-4. **Install the dependencies.** `requirement.txt` lists some standard-library modules and non-installable names, so install the packages directly:
+`docker compose down` stops the app and preserves its data. Database files and uploaded documents live in named volumes. The schema initializer runs only on an empty database. This is a new installation, **not an in-place migration of an old BAXI server**.
 
-   ```bash
-   pip install PyQt6 PyQt6-WebEngine mysql-connector-python requests geopy
-   ```
+### Try each role
 
-5. **Run an app** from the `src` directory:
+Choose passenger, driver or staff on the sign-in screen. “ورود با حساب نمونه” opens the corresponding demo account. Phone codes appear on the screen in this explicitly educational mode; no SMS is sent.
 
-   ```bash
-   cd src
-   python BAXI_MinWindow.py                  # user app
-   python BAXI_Admin_Employee_MinWindow.py   # admin and employee app
-   ```
+| Role | Synthetic account |
+| --- | --- |
+| Passenger | `09120000010` |
+| Female passenger | `09120000020` |
+| Passenger driver | `09120000030` |
+| Female driver | `09120000040` |
+| Box courier | `09120000050` |
+| Cargo driver | `09120000060` |
+| Driver awaiting review | `09120000070` |
+| HR manager / reviewer | Personnel code `9001` / `9002` |
 
-## Design
+Staff demo password: `BaxiDemo!2026`. These are public, synthetic demo credentials, unsuitable for public deployment. To demonstrate a journey, use two browser profiles or a private window: request as a passenger, start work as a driver, accept, start and finish the trip, then rate it from history.
 
-- Figma, user app: https://www.figma.com/file/VVgkoPjr2XQsAXT3FawZph/BAXI?type=design&node-id=149%3A350&mode=design&t=OCoCOrdzqbq9VW2e-1
-- Figma, admin app: https://www.figma.com/file/f16EVeUFA5VmUyYbdSXhBd/BAXI_Admin?type=design&node-id=0%3A1&mode=design&t=IeB6MJW0liNXcbxe-1
+## Implemented experience
 
-## Team
+- **Passengers:** phone sign-in and registration; four services (BAXI, WOMEN, BOX, BAAR); editable coordinates and optional device location; fare estimates; passenger round trips; cargo weight, value and fragility; request cancellation before departure; live status polling; history, rating and simulated wallet top-ups.
+- **Drivers:** registration with vehicle details and four private documents; pending/approved/rejected verification; eligible requests within 5 km; capacity and WOMEN eligibility checks; acceptance, departure and completion; wallet or recorded cash settlement; ratings and simulated withdrawals.
+- **Staff:** personnel sign-in, private document review, recorded approval/rejection. HR managers can create staff accounts and execute all 20 read-only reports.
+- **PWA:** RTL responsive layouts, bundled Vazirmatn fonts, install manifest, standard/maskable icons, standalone launch, public app shell available offline. Requests and account changes require a connection; private API responses and documents are never cached by the service worker.
+- **Data integrity:** parameterized queries, short database sessions, atomic multi-table operations, row locks for competing acceptances, single settlement and rating, idempotent wallet transfer keys, salted staff password hashes and synthetic demo data.
 
-Built by Navid, Sajad and Arsham as a database course project (db4022) at Bu-Ali Sina University.
+The route illustration is **schematic**, not an online map. Pricing uses straight-line geodesic distance in integer **IRR (ریال)**, not road distance, traffic or ETA. Demo insurance and wallet operations move no real money. [Feature boundaries and original work](docs/provenance.md) explain what is implemented and what remains a future integration.
+
+## Install as an app
+
+After opening the production build online once, use Chrome/Edge’s install action, or Safari → Share → Add to Home Screen on iPhone. A self-hosted installation requires HTTPS for service workers and device features; localhost is suitable for local testing. `npm run dev` intentionally does not register the production service worker. No app-store package is required.
+
+## Develop locally
+
+Python 3.12+, Node.js 24+, and MySQL 8.4 are the supported development baseline.
+
+```sh
+docker compose up -d mysql
+python -m venv .venv
+```
+
+Activate `.venv` (`.venv\Scripts\Activate.ps1` on PowerShell, `source .venv/bin/activate` on Linux/macOS), copy `.env.example` to `.env`, then:
+
+```sh
+python -m pip install -r requirements-dev.txt
+python scripts/seed_demo.py
+npm ci
+python -m uvicorn api:app --app-dir src --host 127.0.0.1 --port 8000
+```
+
+In another terminal: `npm run dev`, then open [http://127.0.0.1:5173](http://127.0.0.1:5173). Vite proxies `/api` to Python; browser code never receives database credentials. API documentation: [http://127.0.0.1:8000/api/docs](http://127.0.0.1:8000/api/docs).
+
+For installation/offline testing, run `npm run build` and `npm run preview` instead. Preview runs at port `4173` with the same API proxy. If PyPI is inaccessible in your region, select a trusted reachable package index locally; Docker accepts the optional `BAXI_PIP_INDEX_URL` setting in your untracked `.env`. The default remains official PyPI.
+
+## Verify changes
+
+```sh
+ruff check src scripts tests
+ruff format --check src scripts tests
+python -m pytest -q
+npm run build
+npm run test:e2e
+```
+
+Set `BAXI_RUN_INTEGRATION=1` to include MySQL/API tests **only against an initialized, seeded disposable local database**. Otherwise those tests are skipped. Browser tests require the API running on port 8000 and Chrome installed; they start the production preview automatically. For bundled Chromium, run `npx playwright install chromium` and set `BAXI_BROWSER_CHANNEL=chromium`. Browser tests modify only designated synthetic demo accounts.
+
+GitHub Actions runs the build, Python/MySQL tests and browser checks using an isolated database. See [verification evidence and limitations](docs/verification.md).
+
+## Repository
+
+```text
+web/                   React screens, shared UI, API client, responsive styles
+src/                   FastAPI endpoints, application rules, auth and DB access
+db/                    Fresh MySQL schemas, views, triggers, restricted local grants
+scripts/               Synthetic seed, monthly aggregation, PWA build utilities
+tests/                 Unit, real MySQL/API and Playwright browser tests
+public/                Manifest and install icons
+assets/demo-documents/ Explicitly synthetic identity/vehicle documents
+docs/screenshots/      Screens captured from the running PWA
+docs/legacy/           Original Qt sources, UI screenshots and EER artifacts
+```
+
+## Origin and credits
+
+Originally built by **Navid, Sajad and Arsham** for the **db4022 database course at Bu-Ali Sina University**. The original project used PyQt6 and MySQL. This PWA is a later reconstruction and redesign; individual historical contributions have not been verified. Original design sources and Git history are retained for provenance, while the active application has been replaced.
+
+[Legacy artifacts and Figma references](docs/provenance.md) · [Changes from the original](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+
+No project-wide open-source license has been selected or verified with all original contributors. Public visibility alone does not establish permission to redistribute the original code or design assets. Third-party dependencies retain their own licenses.
