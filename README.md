@@ -4,7 +4,7 @@ A Persian, right-to-left ride and cargo **Progressive Web App**, rebuilt from a 
 
 [راهنمای فارسی](docs/README.fa.md) · [روایت پروژه](docs/case-study.fa.md) · [Architecture](docs/architecture.md) · [Database](docs/database.md) · [Security](SECURITY.md) · [Verification](docs/verification.md)
 
-![Passenger interface](docs/screenshots/passenger-desktop.png)
+![Passenger interface](docs/screenshots/passenger-desktop.jpg)
 
 ## Run the complete local demo
 
@@ -37,13 +37,13 @@ Staff demo password: `BaxiDemo!2026`. These are public, synthetic demo credentia
 
 ## Implemented experience
 
-- **Passengers:** phone sign-in and registration; four services (BAXI, WOMEN, BOX, BAAR); editable coordinates and optional device location; fare estimates; passenger round trips; cargo weight, value and fragility; request cancellation before departure; live status polling; history, rating and simulated wallet top-ups.
+- **Passengers:** phone sign-in and registration; four services (BAXI, WOMEN, BOX, BAAR); Tehran-only interactive map selection of origin/destination and optional device location; fare estimates; passenger round trips; cargo weight, value and fragility; request cancellation before departure; live status polling; history, rating and simulated wallet top-ups.
 - **Drivers:** registration with vehicle details and four private documents; pending/approved/rejected verification; eligible requests within 5 km; capacity and WOMEN eligibility checks; acceptance, departure and completion; wallet or recorded cash settlement; ratings and simulated withdrawals.
 - **Staff:** personnel sign-in, private document review, recorded approval/rejection. HR managers can create staff accounts and execute all 20 read-only reports.
 - **PWA:** RTL responsive layouts, bundled Vazirmatn fonts, install manifest, standard/maskable icons, standalone launch, public app shell available offline. Requests and account changes require a connection; private API responses and documents are never cached by the service worker.
 - **Data integrity:** parameterized queries, short database sessions, atomic multi-table operations, row locks for competing acceptances, single settlement and rating, idempotent wallet transfer keys, salted staff password hashes and synthetic demo data.
 
-The route illustration is **schematic**, not an online map. Pricing uses straight-line geodesic distance in integer **IRR (ریال)**, not road distance, traffic or ETA. Demo insurance and wallet operations move no real money. [Feature boundaries and original work](docs/provenance.md) explain what is implemented and what remains a future integration.
+Booking uses a real OpenStreetMap basemap, movable center pin and explicit origin/destination confirmation, restricted to the Tehran city boundary in both browser and API. See [map coverage and attribution](docs/map.md). Pricing uses straight-line geodesic distance in integer **IRR (ریال)**, not road distance, traffic or ETA. Demo insurance and wallet operations move no real money. [Feature boundaries and original work](docs/provenance.md) explain what is implemented and what remains a future integration.
 
 ## Install as an app
 

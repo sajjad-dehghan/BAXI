@@ -4,6 +4,22 @@ import { mkdirSync } from "node:fs";
 
 const headers = { "X-Baxi-Request": "1" };
 const baseURL = process.env.BAXI_BASE_URL || "http://127.0.0.1:4173";
+// Never fetch public OSM tiles from automated panning/zooming tests.
+test.beforeEach(async ({ context }) => {
+  await context.route("https://tile.openstreetmap.org/**", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#f1f0ed"/><path d="M0 80H256M80 0V256M0 180H256M180 0V256" stroke="white" stroke-width="8"/><text x="16" y="40" fill="#645c70" font-size="12">TEST MAP TILE</text></svg>',
+    }),
+  );
+});
+async function chooseRoute(page: Page) {
+  await expect(
+    page.getByRole("button", { name: "درخواست بکسی", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "تأیید مبدأ", exact: true }).click();
+  await page.getByRole("button", { name: "تأیید مقصد", exact: true }).click();
+}
 async function post(context: BrowserContext, path: string, data: unknown) {
   const response = await context.request.post("/api" + path, { headers, data });
   expect(response.ok(), await response.text()).toBeTruthy();
@@ -25,12 +41,63 @@ async function accessible(page: Page) {
   ).toEqual([]);
 }
 async function screenshot(page: Page, name: string) {
-  mkdirSync("docs/screenshots", { recursive: true });
+  mkdirSync("artifacts/screenshots", { recursive: true });
   await page.screenshot({
-    path: `docs/screenshots/${name}.png`,
+    path: `artifacts/screenshots/${name}.png`,
     fullPage: true,
   });
 }
+
+test("Tehran map selection uses the moved pin, rejects outside geolocation and allows editing", async ({
+  page,
+  context,
+}) => {
+  await login(context, "client", "09120000020");
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 34.798, longitude: 48.515 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "استفاده از موقعیت من" }).click();
+  await expect(page.getByRole("alert")).toContainText("خارج از تهران");
+  const map = page.locator(".city-map");
+  const before = await page
+    .locator(".map-confirm")
+    .getAttribute("data-longitude");
+  await map.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect
+    .poll(() => page.locator(".map-confirm").getAttribute("data-longitude"))
+    .not.toBe(before);
+  const pickup = [
+    Number(await page.locator(".map-confirm").getAttribute("data-latitude")),
+    Number(await page.locator(".map-confirm").getAttribute("data-longitude")),
+  ];
+  await page.getByRole("button", { name: "تأیید مبدأ", exact: true }).click();
+  await context.setGeolocation({ latitude: pickup[0], longitude: pickup[1] });
+  await page.getByRole("button", { name: "استفاده از موقعیت من" }).click();
+  await expect(page.getByText("مقصد باید با مبدأ متفاوت باشد.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "تأیید مقصد", exact: true }),
+  ).toBeDisabled();
+  await context.setGeolocation({ latitude: 35.7112, longitude: 51.3786 });
+  await page.getByRole("button", { name: "استفاده از موقعیت من" }).click();
+  const quoted = page.waitForRequest((request) =>
+    request.url().endsWith("/api/quote"),
+  );
+  await page.getByRole("button", { name: "تأیید مقصد", exact: true }).click();
+  const payload = (await quoted).postDataJSON();
+  expect(payload.pickup[0]).toBeCloseTo(pickup[0], 6);
+  expect(payload.pickup[1]).toBeCloseTo(pickup[1], 6);
+  expect(payload.dropoff[1]).toBeCloseTo(51.3786, 6);
+  await expect(
+    page.getByRole("button", { name: "درخواست بکسی", exact: true }),
+  ).toBeEnabled();
+  await accessible(page);
+  await page.getByRole("button", { name: "مبدأ موقعیت انتخاب شد" }).click();
+  await expect(
+    page.getByRole("button", { name: "درخواست بکسی", exact: true }),
+  ).toBeDisabled();
+  await accessible(page);
+});
 async function noOverflow(page: Page) {
   expect(
     await page.evaluate(
@@ -102,6 +169,7 @@ test("passenger and driver complete a real persisted journey, rating and wallet"
     page.getByRole("heading", { name: "کجا می‌ریم؟" }),
   ).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await chooseRoute(page);
   await accessible(page);
   await screenshot(page, "passenger-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
@@ -270,6 +338,7 @@ test("female service and cargo quotes stay responsive at narrow widths", async (
   await expect(
     page.getByRole("heading", { name: "کجا می‌ریم؟" }),
   ).toBeVisible();
+  await chooseRoute(page);
   await page.getByRole("button", { name: "بانوان همراه رانندهٔ خانم" }).click();
   await expect(
     page.getByRole("button", { name: "درخواست بکسی بانوان" }),

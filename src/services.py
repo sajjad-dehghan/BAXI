@@ -16,6 +16,7 @@ from config import ROOT, settings
 from database import execute, one, rows, transaction
 from get_lat_lon_info import coordinates, estimate_fare, get_lat_lon_info, trip_km
 from security import hash_password, normalize_phone, verify_password
+from service_area import require_tehran
 
 VEHICLES = {"baxi": "baxi", "women": "baxi", "box": "baxi_box", "baar": "baxi_baar"}
 DETAILS = {
@@ -199,6 +200,8 @@ def quote(draft):
     if draft.service not in VEHICLES:
         raise ValueError("Unknown service")
     pickup, dropoff = coordinates(*draft.pickup), coordinates(*draft.dropoff)
+    require_tehran(*pickup)
+    require_tehran(*dropoff)
     if pickup == dropoff:
         raise ValueError("Pickup and destination must be different.")
     weight = integer(draft.cargo_weight, "Cargo weight", 1, 100000)
@@ -299,6 +302,7 @@ def history(account_id, role):
 
 def available_requests(driver_id, latitude, longitude):
     lat, lon = coordinates(latitude, longitude)
+    require_tehran(lat, lon)
     driver = one("SELECT * FROM drivers WHERE id=%s", (driver_id,))
     if not driver or driver["verification_status"] != "approved":
         raise ValueError("Your driver account must be approved by staff first.")
@@ -346,6 +350,8 @@ def accept_request(driver_id, request_id):
             )
         if driver["latitude"] is None or driver["longitude"] is None:
             raise ValueError("Set your location first.")
+        require_tehran(driver["latitude"], driver["longitude"])
+        require_tehran(request["pickup_latitude"], request["pickup_longitude"])
         vehicle = one(
             f"SELECT * FROM {VEHICLES[request['service_type']]} WHERE driver_id=%s",
             (driver_id,),

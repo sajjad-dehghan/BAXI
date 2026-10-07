@@ -16,7 +16,9 @@ export function DriverHome({
   busy: boolean;
   online: boolean;
 }) {
-  const [location, setLocation] = useState<[number, number]>([34.798, 48.515]);
+  const [location, setLocation] = useState<[number, number]>([
+    35.7005, 51.3376,
+  ]);
   const [available, setAvailable] = useState<Trip[]>([]);
   const [onDuty, setOnDuty] = useState(false);
   const [loadError, setLoadError] = useState("");

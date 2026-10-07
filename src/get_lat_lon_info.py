@@ -7,6 +7,7 @@ import requests
 from geopy.distance import geodesic
 
 from config import settings
+from service_area import require_tehran
 
 RATES = {"baxi": 10000, "women": 10000, "box": 8000, "baar": 20000}
 
@@ -29,9 +30,10 @@ def get_lat_lon_info(lat, lon):
     lat, lon = coordinates(lat, lon)
     cfg = settings()
     if cfg.demo:
+        require_tehran(lat, lon)
         return {
-            "state": "Demo",
-            "city": "Demo",
+            "state": "تهران",
+            "city": "تهران",
             "formatted_address": f"Demo coordinates: {lat:.5f}, {lon:.5f}",
         }
     if not cfg.neshan_key:

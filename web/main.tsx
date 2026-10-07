@@ -12,10 +12,13 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { Me, Trip, stateNames, freshDraft, humanError, api } from "./lib";
-import { Busy, Brand, Empty, RouteSketch } from "./ui";
+import { Me, Trip, stateNames, humanError, api } from "./lib";
+import { Busy, Brand, Empty } from "./ui";
 import { Auth } from "./Auth";
 import { Register } from "./Register";
+const JourneyMap = React.lazy(() =>
+  import("./RoutePicker").then((module) => ({ default: module.JourneyMap })),
+);
 import { NewTrip } from "./NewTrip";
 import { TripCard } from "./TripCard";
 import { DriverHome } from "./DriverHome";
@@ -308,13 +311,18 @@ function App() {
                         busy={busy}
                         online={online}
                       />
-                      <RouteSketch
-                        draft={{
-                          ...freshDraft(),
-                          service: active.service_type,
-                        }}
-                        compact
-                      />
+                      <React.Suspense fallback={<Busy />}>
+                        <JourneyMap
+                          pickup={[
+                            Number(active.pickup_latitude),
+                            Number(active.pickup_longitude),
+                          ]}
+                          dropoff={[
+                            Number(active.dropoff_latitude),
+                            Number(active.dropoff_longitude),
+                          ]}
+                        />
+                      </React.Suspense>
                     </div>
                   </>
                 ) : (

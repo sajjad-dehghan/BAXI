@@ -45,7 +45,7 @@ def test_client_identity_and_role_cannot_be_forged(client):
     assert client.get("/api/staff/drivers").status_code == 403
     assert (
         client.post(
-            "/api/available", json={"latitude": 34.798, "longitude": 48.515}
+            "/api/available", json={"latitude": 35.7005, "longitude": 51.3376}
         ).status_code
         == 403
     )
@@ -64,6 +64,28 @@ def test_private_responses_not_cacheable(client):
     result = client.get("/api/history")
     assert result.headers["cache-control"] == "no-store"
     assert all("password" not in record for record in result.json())
+
+
+def test_server_rejects_outside_tehran_for_quote_request_and_driver(client):
+    login(client)
+    for path in ["/api/quote", "/api/requests"]:
+        response = client.post(
+            path,
+            json={
+                "service": "baxi",
+                "pickup": [35.7005, 51.3376],
+                "dropoff": [34.798, 48.515],
+            },
+        )
+        assert response.status_code == 400
+        assert "within Tehran" in response.json()["detail"]
+    client.post("/api/auth/logout", json={})
+    login(client, "driver", "09120000030")
+    response = client.post(
+        "/api/available", json={"latitude": 35.84, "longitude": 50.94}
+    )
+    assert response.status_code == 400
+    assert "within Tehran" in response.json()["detail"]
 
 
 def test_employee_reports_require_manager(client):

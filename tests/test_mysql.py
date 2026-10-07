@@ -13,7 +13,7 @@ pytestmark = pytest.mark.integration
 
 
 def draft(service="baxi", **kwargs):
-    return svc.TripDraft(service, (34.798, 48.515), (34.806, 48.53), **kwargs)
+    return svc.TripDraft(service, (35.7005, 51.3376), (35.7112, 51.3786), **kwargs)
 
 
 def finish(accounts, service="baxi"):
@@ -92,7 +92,7 @@ def test_women_driver_and_passenger_restrictions(accounts):
     with pytest.raises(ValueError):
         svc.accept_request(accounts["driver"], rid)
     assert rid not in [
-        r["id"] for r in svc.available_requests(accounts["driver"], 34.798, 48.515)
+        r["id"] for r in svc.available_requests(accounts["driver"], 35.7005, 51.3376)
     ]
     svc.accept_request(accounts["female_driver"], rid)
 
@@ -100,19 +100,22 @@ def test_women_driver_and_passenger_restrictions(accounts):
 def test_longitude_latitude_nearby_boundary(accounts):
     # Eastward 0.05 degrees is ~4.57 km here, but ~5.56 km if lat/lon are swapped.
     rid = svc.create_request(
-        accounts["client"], svc.TripDraft("baxi", (34.798, 48.565), (34.806, 48.57))
+        accounts["client"],
+        svc.TripDraft("baxi", (35.7005, 51.3876), (35.7112, 51.3926)),
     )
     assert rid in [
-        r["id"] for r in svc.available_requests(accounts["driver"], 34.798, 48.515)
+        r["id"] for r in svc.available_requests(accounts["driver"], 35.7005, 51.3376)
     ]
 
 
 def test_cargo_coordinates_and_capacity(accounts):
     rid = svc.create_request(accounts["client"], draft("box", cargo_weight=101))
     cargo = one("SELECT * FROM light_transports WHERE request_id=%s", (rid,))
-    assert cargo["dropoff_latitude"] == 34.806 and cargo["dropoff_longitude"] == 48.53
+    assert (
+        cargo["dropoff_latitude"] == 35.7112 and cargo["dropoff_longitude"] == 51.3786
+    )
     assert rid not in [
-        r["id"] for r in svc.available_requests(accounts["box"], 34.798, 48.515)
+        r["id"] for r in svc.available_requests(accounts["box"], 35.7005, 51.3376)
     ]
     with pytest.raises(ValueError):
         svc.accept_request(accounts["box"], rid)
@@ -224,7 +227,7 @@ def test_approval_and_rejection_persist(accounts):
         (did,),
     )
     with pytest.raises(ValueError):
-        svc.available_requests(did, 34.798, 48.515)
+        svc.available_requests(did, 35.7005, 51.3376)
     svc.review_driver(9002, did, False, "Synthetic missing information")
     assert (
         one("SELECT verification_status FROM drivers WHERE id=%s", (did,))[

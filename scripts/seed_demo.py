@@ -91,7 +91,7 @@ def seed():
                 service,
             )
             execute(
-                "UPDATE drivers SET wallet_balance=200000,latitude=34.798,longitude=48.515 WHERE id=%s",
+                "UPDATE drivers SET wallet_balance=200000,latitude=35.7005,longitude=51.3376 WHERE id=%s",
                 (account["id"],),
             )
             if phone != "09120000070":
@@ -112,8 +112,8 @@ def seed():
             )["id"]
             draft = svc.TripDraft(
                 service,
-                (34.798, 48.515),
-                (34.806, 48.53),
+                (35.7005, 51.3376),
+                (35.7112, 51.3786),
                 cargo_weight=5,
                 cargo_value=100000,
             )
