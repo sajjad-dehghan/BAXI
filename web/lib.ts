@@ -35,6 +35,25 @@ export const freshBooking = (): BookingState => ({
 });
 export const money = (value: number) =>
   new Intl.NumberFormat("fa-IR").format(value);
+export const toman = (irr: number) =>
+  new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(
+    Number(irr) / 10,
+  );
+export function toIrr(value: string | number): number {
+  const text = String(value);
+  if (!/^\d+$/.test(text) || !Number.isSafeInteger(Number(text) * 10))
+    throw new Error("مبلغ را به تومان و با عدد صحیح وارد کن.");
+  return Number(text) * 10;
+}
+export type FareLine = { code: string; amount_irr: number };
+export type Quote = {
+  quote_id: string;
+  expires_at: string;
+  policy_version: string;
+  cost: number;
+  km: number;
+  breakdown: FareLine[];
+};
 export const serviceNames: Record<string, string> = {
   baxi: "بکسی",
   women: "بکسی بانوان",
@@ -67,6 +86,18 @@ export const freshDraft = (): Draft => ({
 
 export function humanError(raw: string): string {
   const rules: [RegExp, string][] = [
+    [
+      /Quote expired/i,
+      "اعتبار قیمت تمام شده؛ قیمت تازه را بررسی و دوباره تأیید کن.",
+    ],
+    [
+      /Invalid quote|Quote does not match/i,
+      "این قیمت برای درخواست فعلی معتبر نیست؛ قیمت تازه بگیر.",
+    ],
+    [
+      /Cargo weight exceeds/i,
+      "وزن از سقف این سرویس بیشتر است؛ باکس تا ۲۰ و بار شهری تا ۲۰۰۰ کیلوگرم.",
+    ],
     [
       /Insufficient wallet/i,
       "موجودی کیف پول کافی نیست؛ نقدی را انتخاب کن یا کیف پول را شارژ کن.",

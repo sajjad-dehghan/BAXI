@@ -24,7 +24,7 @@ REPORTS = [
     ),
     Report(
         "درآمد رانندگان",
-        "SELECT d.id,d.first_name,d.last_name,COUNT(*) AS trips,SUM(t.cost) AS gross_irr,SUM(FLOOR(t.cost*0.8)) AS net_irr FROM service_acceptances a JOIN drivers d ON d.id=a.driver_id JOIN trip_costs t ON t.request_id=a.request_id GROUP BY d.id,d.first_name,d.last_name ORDER BY net_irr DESC,d.id",
+        "SELECT d.id,d.first_name,d.last_name,COUNT(*) AS trips,SUM(t.cost) AS gross_irr,SUM(COALESCE(p.driver_net_irr,FLOOR(t.cost*0.8))) AS net_irr FROM service_acceptances a JOIN drivers d ON d.id=a.driver_id JOIN trip_costs t ON t.request_id=a.request_id LEFT JOIN trip_pricing p ON p.request_id=a.request_id GROUP BY d.id,d.first_name,d.last_name ORDER BY net_irr DESC,d.id",
     ),
     Report(
         "درخواست‌های ۳۰ روز اخیر",

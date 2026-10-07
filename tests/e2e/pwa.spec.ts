@@ -43,11 +43,21 @@ async function login(context: BrowserContext, role: string, phone: string) {
   const cached = testSessions.get(key);
   if (cached) {
     await context.addCookies(cached);
-    return;
+  } else {
+    const code = await post(context, "/auth/code", { phone });
+    await post(context, "/auth/verify", { role, phone, code: code.demo_code });
+    testSessions.set(key, await context.cookies());
   }
-  const code = await post(context, "/auth/code", { phone });
-  await post(context, "/auth/verify", { role, phone, code: code.demo_code });
-  testSessions.set(key, await context.cookies());
+  // Reruns spend demo balances. Top up only these dedicated synthetic accounts
+  // through the normal idempotent demo API; never reset shared database rows.
+  if (role === "client" && ["09120000010", "09120000020"].includes(phone)) {
+    const me = await (await context.request.get("/api/me")).json();
+    if (me.demo && me.account.wallet_balance < 2000000)
+      await post(context, "/wallet/demo", {
+        amount: 5000000 - me.account.wallet_balance,
+        key: crypto.randomUUID().replaceAll("-", ""),
+      });
+  }
 }
 async function accessible(page: Page) {
   const result = await new AxeBuilder({ page })
@@ -222,6 +232,8 @@ test("passenger and driver complete a real persisted journey, rating and wallet"
       .getByRole("button", { name: "تأیید موقعیت راننده", exact: true })
       .click();
     await driver.getByRole("button", { name: "شروع کار", exact: true }).click();
+    await expect(driver.getByText("دریافتی خالص شما").first()).toBeVisible();
+    await expect(driver.getByText("کمیسیون بکسی").first()).toBeVisible();
     await driver
       .getByRole("button", { name: "پذیرش درخواست", exact: true })
       .first()
@@ -263,7 +275,7 @@ test("passenger and driver complete a real persisted journey, rating and wallet"
       .getByRole("button", { name: "کیف پول", exact: true })
       .filter({ visible: true })
       .click();
-    await page.getByLabel("مبلغ، ریال").fill("10000");
+    await page.getByLabel("مبلغ، تومان").fill("10000");
     const before = (await (await context.request.get("/api/me")).json()).account
       .wallet_balance;
     const keys: string[] = [];
@@ -288,7 +300,7 @@ test("passenger and driver complete a real persisted journey, rating and wallet"
     expect(
       (await (await context.request.get("/api/me")).json()).account
         .wallet_balance,
-    ).toBe(before + 10000);
+    ).toBe(before + 100000);
     await accessible(page);
     await screenshot(page, "wallet-mobile");
   } finally {
@@ -386,14 +398,81 @@ test("female service and cargo quotes stay responsive at narrow widths", async (
   await page
     .getByRole("button", { name: "ارسال بسته و بار", exact: true })
     .click();
-  await page.getByLabel("ارزش بار، ریال").fill("100000");
+  await page.getByLabel("ارزش اظهارشدهٔ بار، تومان").fill("100000");
   await expect(
-    page.getByText("شامل ۲٬۰۰۰ ریال بیمهٔ آزمایشی، معادل ۲٪ ارزش بار"),
+    page.getByText(
+      "ارزش بار صرفاً اظهار شماست؛ هزینهٔ بیمه دریافت نمی‌شود و پوشش بیمهٔ واقعی نداریم.",
+    ),
   ).toBeVisible();
+  await expect(page.getByTestId("request-ride")).toBeEnabled();
+  const lightFare = await page.locator(".ride-total strong").innerText();
+  await page.getByLabel("وزن بار، کیلوگرم").fill("6");
+  await expect(page.getByTestId("request-ride")).toBeEnabled();
+  await expect(page.locator(".ride-total strong")).not.toHaveText(lightFare);
+  await page.getByText("جزئیات قیمت", { exact: true }).click();
+  await expect(page.getByText("اضافهٔ وزن بار", { exact: true })).toBeVisible();
+  await screenshot(page, "pricing-cargo-desktop");
   for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await noOverflow(page);
   }
+  await accessible(page);
+});
+
+test("expired quote requires a fresh price and a separate confirmation", async ({
+  page,
+  context,
+}) => {
+  await login(context, "client", "09120000010");
+  const start = new Date();
+  await page.clock.install({ time: start });
+  let quotes = 0;
+  let bookings = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/requests")) bookings++;
+  });
+  await page.route("**/api/quote", async (route) => {
+    const first = ++quotes <= 4;
+    const response = await route.fetch();
+    const value = await response.json();
+    value.expires_at = new Date(
+      start.getTime() + (first ? 2000 : 300000),
+    ).toISOString();
+    if (!first) value.cost += 100000;
+    await route.fulfill({ json: value });
+  });
+  await page.goto("/");
+  await chooseRoute(page);
+  await expect(page.getByTestId("request-ride")).toBeEnabled();
+  const original = await page.locator(".ride-total strong").innerText();
+  await page.clock.fastForward(3000);
+  await expect(page.getByTestId("request-ride")).toHaveText("دریافت قیمت تازه");
+  await page.getByTestId("request-ride").click();
+  await expect.poll(() => quotes).toBe(8);
+  await expect(page.locator(".ride-total strong")).not.toHaveText(original);
+  await expect(page.getByTestId("request-ride")).toHaveText(/درخواست بکسی/);
+  expect(bookings).toBe(0);
+  await accessible(page);
+});
+
+test("legacy wallet amounts retain fractional tomans", async ({
+  page,
+  context,
+}) => {
+  await login(context, "client", "09120000010");
+  await page.route("**/api/me", async (route) => {
+    const response = await route.fetch();
+    const value = await response.json();
+    value.account.wallet_balance = 123457;
+    await route.fulfill({ json: value });
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "کیف پول", exact: true })
+    .filter({ visible: true })
+    .click();
+  await expect(page.locator(".wallet-card strong")).toHaveText("۱۲٬۳۴۵٫۷تومان");
+  await expect(page.getByLabel("مبلغ، تومان")).toBeVisible();
   await accessible(page);
 });
 
@@ -573,7 +652,14 @@ test("late quotes cannot overwrite a new fare and wallet shortfall has a cash re
     const first = ++count <= 4;
     if (first) await held;
     await route.fulfill({
-      json: { cost: first ? 111 : 222, insurance: 0, km: 1 },
+      json: {
+        cost: first ? 1110000 : 2220000,
+        km: 1,
+        quote_id: "a".repeat(32),
+        expires_at: new Date(Date.now() + 300000).toISOString(),
+        breakdown: [],
+        policy_version: "test",
+      },
     });
     delivered++;
   });
@@ -582,10 +668,10 @@ test("late quotes cannot overwrite a new fare and wallet shortfall has a cash re
     await chooseRoute(page);
     await expect.poll(() => count).toBe(4);
     await page.getByRole("checkbox", { name: /رفت و برگشت/ }).check();
-    await expect(page.locator(".ride-total strong")).toContainText("۲۲۲");
+    await expect(page.locator(".ride-total strong")).toContainText("۲۲۲٬۰۰۰");
     release();
     await expect.poll(() => delivered).toBe(8);
-    await expect(page.locator(".ride-total strong")).toContainText("۲۲۲");
+    await expect(page.locator(".ride-total strong")).toContainText("۲۲۲٬۰۰۰");
     await expect(page.getByTestId("request-ride")).toBeDisabled();
     await expect(page.getByRole("alert")).toContainText("موجودی کافی نیست");
     await page

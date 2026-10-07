@@ -47,6 +47,8 @@ jobs:
           MYSQL_PWD: baxi-ci-only
         run: |
           mysql --protocol=TCP -h 127.0.0.1 -uroot < db/main.sql
+          mysql --protocol=TCP -h 127.0.0.1 -uroot < db/migrations/003-pricing.sql
+          mysql --protocol=TCP -h 127.0.0.1 -uroot < db/migrations/003-pricing.sql
           mysql --protocol=TCP -h 127.0.0.1 -uroot -e "CREATE USER 'baxi'@'%' IDENTIFIED BY 'baxi-ci-app-only';"
           mysql --protocol=TCP -h 127.0.0.1 -uroot < db/local-grants.sql
           python scripts/seed_demo.py

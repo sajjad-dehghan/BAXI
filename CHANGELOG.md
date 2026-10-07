@@ -1,5 +1,14 @@
 # Changelog
 
+## Versioned sample pricing — 2026-10-07
+
+- Add base/minimum fares, cargo weight bands and half-up rounding; remove the unsupported demo insurance premium.
+- Persist owned five-minute quotes and immutable booked fare, commission and driver net; enforce quote IDs and idempotent booking.
+- Use stored net for wallet/cash settlement and income reports; preserve legacy fares and settlement rules through an additive migration.
+- Display and enter money in tomans throughout the PWA, including exact fractional historical amounts, receipts and driver offers.
+- Add expiry/reconfirmation, pricing breakdowns, daily unused-quote cleanup and a documented sample tariff policy.
+
+
 ## Map-first ride experience — 2026-10-07
 
 - Replace the long booking form with sequential map confirmation and a fixed-action responsive sheet.

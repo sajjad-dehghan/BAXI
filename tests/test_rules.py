@@ -106,14 +106,14 @@ def test_drafts_do_not_share_or_accumulate_routes():
         first.service = "box"
 
 
-def test_fare_round_trip_insurance_and_fractional_distance():
+def test_fare_round_trip_no_insurance_and_fractional_distance():
     pickup, dropoff = (34.8, 48.5), (34.801, 48.501)
     fare, _ = estimate_fare("baxi", pickup, dropoff)
     back, _ = estimate_fare("baxi", pickup, dropoff, True)
     assert abs(back - 2 * fare) <= 1
     base, _ = estimate_fare("box", pickup, dropoff)
     insured, insurance = estimate_fare("box", pickup, dropoff, cargo_value=100000)
-    assert insurance == 2000 and insured == base + 2000
+    assert insurance == 0 and insured == base
     assert 0 < trip_km(pickup, dropoff) < 1
 
 

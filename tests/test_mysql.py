@@ -16,6 +16,12 @@ def draft(service="baxi", **kwargs):
     return svc.TripDraft(service, (35.7005, 51.3376), (35.7112, 51.3786), **kwargs)
 
 
+def book(client_id, trip):
+    return svc.create_request(
+        client_id, trip, svc.issue_quote(client_id, trip)["quote_id"]
+    )
+
+
 def finish(accounts, service="baxi"):
     cid = accounts["female"] if service == "women" else accounts["client"]
     driver = accounts[
@@ -23,7 +29,7 @@ def finish(accounts, service="baxi"):
             service
         ]
     ]
-    rid = svc.create_request(cid, draft(service))
+    rid = book(cid, draft(service))
     svc.accept_request(driver, rid)
     svc.start_trip(driver, rid)
     svc.complete_trip(driver, rid)
@@ -33,7 +39,7 @@ def finish(accounts, service="baxi"):
 def test_passenger_payment_labels_and_assigned_vehicle_survive_settlement(accounts):
     cid, driver = accounts["client"], accounts["driver"]
     before = svc.balance(cid, "client")
-    rid = svc.create_request(
+    rid = book(
         cid,
         draft(payment="cash", pickup_label="میدان آزادی", dropoff_label="میدان انقلاب"),
     )
@@ -65,9 +71,9 @@ def test_wallet_shortfall_blocks_explicit_wallet_booking_but_allows_cash(account
     cid = accounts["client"]
     execute("UPDATE clients SET wallet_balance=0 WHERE id=%s", (cid,))
     with pytest.raises(ValueError, match="Insufficient"):
-        svc.create_request(cid, draft(payment="wallet-to-wallet"))
+        book(cid, draft(payment="wallet-to-wallet"))
     assert not one("SELECT id FROM service_requests WHERE client_id=%s", (cid,))
-    rid = svc.create_request(cid, draft(payment="cash"))
+    rid = book(cid, draft(payment="cash"))
     assert (
         one("SELECT preferred_payment FROM service_requests WHERE id=%s", (rid,))[
             "preferred_payment"
@@ -110,14 +116,14 @@ def test_booking_rollback_on_destination_failure(accounts, monkeypatch):
 
     monkeypatch.setattr(svc, "execute", failing)
     with pytest.raises(RuntimeError):
-        svc.create_request(accounts["client"], draft())
+        book(accounts["client"], draft())
     assert not one(
         "SELECT id FROM service_requests WHERE client_id=%s", (accounts["client"],)
     )
 
 
 def test_two_drivers_compete_only_one_can_accept(accounts):
-    rid = svc.create_request(accounts["client"], draft())
+    rid = book(accounts["client"], draft())
 
     def accept(driver):
         try:
@@ -133,8 +139,8 @@ def test_two_drivers_compete_only_one_can_accept(accounts):
 
 def test_women_driver_and_passenger_restrictions(accounts):
     with pytest.raises(ValueError):
-        svc.create_request(accounts["client"], draft("women"))
-    rid = svc.create_request(accounts["female"], draft("women"))
+        book(accounts["client"], draft("women"))
+    rid = book(accounts["female"], draft("women"))
     with pytest.raises(ValueError):
         svc.accept_request(accounts["driver"], rid)
     assert rid not in [
@@ -145,7 +151,7 @@ def test_women_driver_and_passenger_restrictions(accounts):
 
 def test_longitude_latitude_nearby_boundary(accounts):
     # Eastward 0.05 degrees is ~4.57 km here, but ~5.56 km if lat/lon are swapped.
-    rid = svc.create_request(
+    rid = book(
         accounts["client"],
         svc.TripDraft("baxi", (35.7005, 51.3876), (35.7112, 51.3926)),
     )
@@ -155,7 +161,10 @@ def test_longitude_latitude_nearby_boundary(accounts):
 
 
 def test_cargo_coordinates_and_capacity(accounts):
-    rid = svc.create_request(accounts["client"], draft("box", cargo_weight=101))
+    execute(
+        "UPDATE baxi_box SET vehicle_capacity=5 WHERE driver_id=%s", (accounts["box"],)
+    )
+    rid = book(accounts["client"], draft("box", cargo_weight=6))
     cargo = one("SELECT * FROM light_transports WHERE request_id=%s", (rid,))
     assert (
         cargo["dropoff_latitude"] == 35.7112 and cargo["dropoff_longitude"] == 51.3786
@@ -168,7 +177,7 @@ def test_cargo_coordinates_and_capacity(accounts):
 
 
 def test_cancel_state_and_ownership(accounts):
-    rid = svc.create_request(accounts["client"], draft())
+    rid = book(accounts["client"], draft())
     with pytest.raises(ValueError):
         svc.cancel_request(accounts["female"], rid)
     svc.accept_request(accounts["driver"], rid)
@@ -178,7 +187,7 @@ def test_cancel_state_and_ownership(accounts):
 
 
 def test_insufficient_balance_rolls_back_trip_completion(accounts):
-    rid = svc.create_request(accounts["client"], draft())
+    rid = book(accounts["client"], draft())
     svc.accept_request(accounts["driver"], rid)
     svc.start_trip(accounts["driver"], rid)
     execute("UPDATE clients SET wallet_balance=0 WHERE id=%s", (accounts["client"],))
@@ -218,7 +227,7 @@ def test_recorded_cash_only_debits_driver_commission(accounts):
         svc.balance(cid, "client"),
         svc.balance(did, "driver"),
     )
-    rid = svc.create_request(cid, draft())
+    rid = book(cid, draft())
     svc.accept_request(did, rid)
     svc.start_trip(did, rid)
     svc.complete_trip(did, rid, "cash")

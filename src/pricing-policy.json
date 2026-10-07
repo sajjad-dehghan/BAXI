@@ -1,0 +1,13 @@
+{
+  "version": "tehran-demo-v1",
+  "currency": "IRR",
+  "basis": "geodesic",
+  "quote_seconds": 300,
+  "rounding_irr": 10000,
+  "services": {
+    "baxi": {"base_irr": 200000, "per_km_irr": 60000, "minimum_irr": 400000, "commission_bps": 2000, "weight_bands": []},
+    "women": {"base_irr": 200000, "per_km_irr": 60000, "minimum_irr": 400000, "commission_bps": 2000, "weight_bands": []},
+    "box": {"base_irr": 150000, "per_km_irr": 40000, "minimum_irr": 300000, "commission_bps": 2000, "weight_bands": [[5, 10000], [10, 12500], [20, 15000]]},
+    "baar": {"base_irr": 600000, "per_km_irr": 120000, "minimum_irr": 1000000, "commission_bps": 2000, "weight_bands": [[500, 10000], [1000, 12500], [2000, 15000]]}
+  }
+}

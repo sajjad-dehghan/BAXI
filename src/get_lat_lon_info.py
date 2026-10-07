@@ -1,15 +1,13 @@
 """Offline reverse geocoding and straight-line fare estimates, in IRR."""
 
 import math
-from decimal import ROUND_HALF_UP, Decimal
 
 import requests
 from geopy.distance import geodesic
 
 from config import settings
+from pricing import calculate
 from service_area import require_tehran
-
-RATES = {"baxi": 10000, "women": 10000, "box": 8000, "baar": 20000}
 
 
 def coordinates(latitude, longitude):
@@ -55,21 +53,11 @@ def get_lat_lon_info(lat, lon):
 
 
 def trip_km(pickup, dropoff):
-    return round(geodesic(coordinates(*pickup), coordinates(*dropoff)).km, 2)
+    return geodesic(coordinates(*pickup), coordinates(*dropoff)).km
 
 
-def estimate_fare(service, pickup, dropoff, round_trip=False, cargo_value=0):
-    if service not in RATES:
-        raise ValueError("Unknown service")
-    distance = Decimal(str(geodesic(coordinates(*pickup), coordinates(*dropoff)).km))
-    fare = (distance * RATES[service] * (2 if round_trip else 1)).quantize(
-        Decimal("1"), rounding=ROUND_HALF_UP
-    )
-    insurance = (
-        (Decimal(cargo_value) * Decimal("0.02")).quantize(
-            Decimal("1"), rounding=ROUND_HALF_UP
-        )
-        if service == "box"
-        else 0
-    )
-    return int(fare) + int(insurance), int(insurance)
+def estimate_fare(
+    service, pickup, dropoff, round_trip=False, cargo_value=0, cargo_weight=1
+):
+    estimate = calculate(service, trip_km(pickup, dropoff), round_trip, cargo_weight)
+    return estimate["cost"], 0

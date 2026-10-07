@@ -63,6 +63,38 @@ CREATE TABLE service_requests (
  INDEX available_requests(state,service_type), INDEX client_history(client_id,request_time),
  INDEX driver_history(assigned_driver_id,request_time)
 ) ENGINE=InnoDB;
+CREATE TABLE pricing_policies (
+ version VARCHAR(64) PRIMARY KEY,
+ fingerprint CHAR(64) NOT NULL,
+ policy JSON NOT NULL,
+ created_at DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6))
+);
+CREATE TABLE fare_quotes (
+ id CHAR(32) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+ client_id INT NOT NULL,
+ policy_version VARCHAR(64) NOT NULL,
+ draft JSON NOT NULL,
+ price JSON NOT NULL,
+ expires_at DATETIME(6) NOT NULL,
+ created_at DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
+ FOREIGN KEY(client_id) REFERENCES clients(id),
+ FOREIGN KEY(policy_version) REFERENCES pricing_policies(version),
+ INDEX quote_expiry(expires_at)
+);
+CREATE TABLE trip_pricing (
+ request_id BIGINT PRIMARY KEY,
+ quote_id CHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
+ policy_version VARCHAR(64) NOT NULL,
+ breakdown JSON NOT NULL,
+ cost BIGINT NOT NULL CHECK(cost>=0),
+ commission_irr BIGINT NOT NULL CHECK(commission_irr>=0),
+ driver_net_irr BIGINT NOT NULL CHECK(driver_net_irr>=0),
+ commission_bps INT NOT NULL CHECK(commission_bps BETWEEN 0 AND 10000),
+ CHECK(cost=commission_irr+driver_net_irr),
+ FOREIGN KEY(request_id) REFERENCES service_requests(id),
+ FOREIGN KEY(quote_id) REFERENCES fare_quotes(id),
+ FOREIGN KEY(policy_version) REFERENCES pricing_policies(version)
+);
 CREATE TABLE baxi_trips (
  request_id BIGINT PRIMARY KEY, cost BIGINT NOT NULL CHECK(cost>=0), round_trip BOOLEAN NOT NULL DEFAULT FALSE,
  FOREIGN KEY(request_id) REFERENCES service_requests(id) ON DELETE CASCADE
@@ -145,8 +177,10 @@ CREATE TABLE monthly_incomes (
  driver_id INT NOT NULL, month DATE NOT NULL, gross_income BIGINT NOT NULL CHECK(gross_income>=0), net_income BIGINT NOT NULL CHECK(net_income>=0),
  PRIMARY KEY(driver_id,month), FOREIGN KEY(driver_id) REFERENCES drivers(id)
 ) ENGINE=InnoDB;
-CREATE VIEW trip_costs AS SELECT request_id,cost FROM baxi_trips
- UNION ALL SELECT request_id,cost FROM heavy_transports UNION ALL SELECT request_id,cost FROM light_transports;
+CREATE OR REPLACE VIEW trip_costs AS
+ SELECT t.request_id,COALESCE(p.cost,t.cost) AS cost FROM baxi_trips t LEFT JOIN trip_pricing p ON p.request_id=t.request_id
+ UNION ALL SELECT t.request_id,COALESCE(p.cost,t.cost) FROM heavy_transports t LEFT JOIN trip_pricing p ON p.request_id=t.request_id
+ UNION ALL SELECT t.request_id,COALESCE(p.cost,t.cost) FROM light_transports t LEFT JOIN trip_pricing p ON p.request_id=t.request_id;
 CREATE VIEW female_drivers AS SELECT id,first_name,last_name FROM drivers WHERE sex='F' AND verification_status='approved';
 CREATE VIEW male_drivers AS SELECT id,first_name,last_name FROM drivers WHERE sex='M' AND verification_status='approved';
 CREATE VIEW baar_drivers AS SELECT d.id,d.first_name,d.last_name,b.vehicle_name FROM drivers d JOIN baxi_baar b ON b.driver_id=d.id;
@@ -160,15 +194,21 @@ CREATE TRIGGER driver_age_check BEFORE INSERT ON drivers FOR EACH ROW
 BEGIN
  IF TIMESTAMPDIFF(YEAR,NEW.birth_date,CURDATE())<18 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Drivers must be at least 18'; END IF;
 END//
+CREATE TRIGGER immutable_trip_pricing BEFORE UPDATE ON trip_pricing FOR EACH ROW
+BEGIN
+ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Booked pricing is immutable';
+END//
 CREATE TRIGGER update_wallets AFTER INSERT ON service_acceptances FOR EACH ROW
 BEGIN
- DECLARE fare BIGINT; DECLARE customer INT;
- SELECT c.cost,r.client_id INTO fare,customer FROM trip_costs c JOIN service_requests r ON r.id=c.request_id WHERE c.request_id=NEW.request_id;
+ DECLARE fare BIGINT; DECLARE customer INT; DECLARE net BIGINT;
+ SELECT c.cost,r.client_id,COALESCE(p.driver_net_irr,FLOOR(c.cost*0.8)) INTO fare,customer,net
+ FROM trip_costs c JOIN service_requests r ON r.id=c.request_id
+ LEFT JOIN trip_pricing p ON p.request_id=c.request_id WHERE c.request_id=NEW.request_id;
  IF NEW.method_of_payment='wallet-to-wallet' THEN
   UPDATE clients SET wallet_balance=wallet_balance-fare WHERE id=customer;
-  UPDATE drivers SET wallet_balance=wallet_balance+FLOOR(fare*0.8) WHERE id=NEW.driver_id;
+  UPDATE drivers SET wallet_balance=wallet_balance+net WHERE id=NEW.driver_id;
  ELSE
-  UPDATE drivers SET wallet_balance=wallet_balance-(fare-FLOOR(fare*0.8)) WHERE id=NEW.driver_id;
+  UPDATE drivers SET wallet_balance=wallet_balance-(fare-net) WHERE id=NEW.driver_id;
  END IF;
 END//
 CREATE TRIGGER commit_deposit BEFORE INSERT ON deposits FOR EACH ROW

@@ -59,7 +59,7 @@ def seed():
     ]:
         if not one("SELECT id FROM clients WHERE phone_number=%s", (phone[1:],)):
             account = svc.register_client(phone, first, "نمونه", "1995-05-23", sex)
-            svc.demo_transfer(account["id"], "client", 1000000)
+            svc.demo_transfer(account["id"], "client", 5000000)
     drivers = [
         ("09120000030", "راننده", "M", "baxi", 4),
         ("09120000040", "راننده بانوان", "F", "women", 4),
@@ -117,7 +117,9 @@ def seed():
                 cargo_weight=5,
                 cargo_value=100000,
             )
-            request = svc.create_request(passenger, draft)
+            request = svc.create_request(
+                passenger, draft, svc.issue_quote(passenger, draft)["quote_id"]
+            )
             svc.accept_request(driver, request)
             svc.start_trip(driver, request)
             svc.complete_trip(driver, request)
