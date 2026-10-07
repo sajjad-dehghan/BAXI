@@ -3,6 +3,10 @@ import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
 
 const headers = { "X-Baxi-Request": "1" };
+const testSessions = new Map<
+  string,
+  Awaited<ReturnType<BrowserContext["cookies"]>>
+>();
 const baseURL = process.env.BAXI_BASE_URL || "http://127.0.0.1:4173";
 // Never fetch public OSM tiles from automated panning/zooming tests.
 test.beforeEach(async ({ context }) => {
@@ -14,10 +18,19 @@ test.beforeEach(async ({ context }) => {
   );
 });
 async function chooseRoute(page: Page) {
-  await expect(
-    page.getByRole("button", { name: "درخواست بکسی", exact: true }),
-  ).toBeDisabled();
+  await expect(page.getByTestId("request-ride")).toHaveCount(0);
   await page.getByRole("button", { name: "تأیید مبدأ", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "تأیید مقصد", exact: true }),
+  ).toBeDisabled();
+  const before = await page
+    .locator(".pin-selection")
+    .getAttribute("data-longitude");
+  await page.locator(".city-map").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect
+    .poll(() => page.locator(".pin-selection").getAttribute("data-longitude"))
+    .not.toBe(before);
   await page.getByRole("button", { name: "تأیید مقصد", exact: true }).click();
 }
 async function post(context: BrowserContext, path: string, data: unknown) {
@@ -26,8 +39,15 @@ async function post(context: BrowserContext, path: string, data: unknown) {
   return response.json();
 }
 async function login(context: BrowserContext, role: string, phone: string) {
+  const key = role + phone;
+  const cached = testSessions.get(key);
+  if (cached) {
+    await context.addCookies(cached);
+    return;
+  }
   const code = await post(context, "/auth/code", { phone });
   await post(context, "/auth/verify", { role, phone, code: code.demo_code });
+  testSessions.set(key, await context.cookies());
 }
 async function accessible(page: Page) {
   const result = await new AxeBuilder({ page })
@@ -60,16 +80,16 @@ test("Tehran map selection uses the moved pin, rejects outside geolocation and a
   await expect(page.getByRole("alert")).toContainText("خارج از تهران");
   const map = page.locator(".city-map");
   const before = await page
-    .locator(".map-confirm")
+    .locator(".pin-selection")
     .getAttribute("data-longitude");
   await map.focus();
   await page.keyboard.press("ArrowRight");
   await expect
-    .poll(() => page.locator(".map-confirm").getAttribute("data-longitude"))
+    .poll(() => page.locator(".pin-selection").getAttribute("data-longitude"))
     .not.toBe(before);
   const pickup = [
-    Number(await page.locator(".map-confirm").getAttribute("data-latitude")),
-    Number(await page.locator(".map-confirm").getAttribute("data-longitude")),
+    Number(await page.locator(".pin-selection").getAttribute("data-latitude")),
+    Number(await page.locator(".pin-selection").getAttribute("data-longitude")),
   ];
   await page.getByRole("button", { name: "تأیید مبدأ", exact: true }).click();
   await context.setGeolocation({ latitude: pickup[0], longitude: pickup[1] });
@@ -92,10 +112,8 @@ test("Tehran map selection uses the moved pin, rejects outside geolocation and a
     page.getByRole("button", { name: "درخواست بکسی", exact: true }),
   ).toBeEnabled();
   await accessible(page);
-  await page.getByRole("button", { name: "مبدأ موقعیت انتخاب شد" }).click();
-  await expect(
-    page.getByRole("button", { name: "درخواست بکسی", exact: true }),
-  ).toBeDisabled();
+  await page.getByRole("button", { name: "ویرایش مبدأ" }).click();
+  await expect(page.getByTestId("request-ride")).toHaveCount(0);
   await accessible(page);
 });
 async function noOverflow(page: Page) {
@@ -166,7 +184,7 @@ test("passenger and driver complete a real persisted journey, rating and wallet"
       await post(context, `/requests/${trip.id}/cancel`, {});
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "کجا می‌ریم؟" }),
+    page.getByRole("heading", { name: "مبدأ سفر کجاست؟" }),
   ).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await chooseRoute(page);
@@ -187,8 +205,22 @@ test("passenger and driver complete a real persisted journey, rating and wallet"
   });
   try {
     await login(driverContext, "driver", "09120000030");
+    await driverContext.route("https://tile.openstreetmap.org/**", (route) =>
+      route.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#eee"/></svg>',
+      }),
+    );
     const driver = await driverContext.newPage();
     await driver.goto("/");
+    await driver
+      .getByRole("button", { name: "تغییر موقعیت", exact: true })
+      .click();
+    await expect(driver.getByRole("dialog")).toBeVisible();
+    await accessible(driver);
+    await driver
+      .getByRole("button", { name: "تأیید موقعیت راننده", exact: true })
+      .click();
     await driver.getByRole("button", { name: "شروع کار", exact: true }).click();
     await driver
       .getByRole("button", { name: "پذیرش درخواست", exact: true })
@@ -197,6 +229,19 @@ test("passenger and driver complete a real persisted journey, rating and wallet"
     await expect(
       driver.getByRole("button", { name: "شروع سفر", exact: true }),
     ).toBeEnabled();
+    await expect(
+      page.getByRole("heading", { name: "راننده سفرت را پذیرفت", exact: true }),
+    ).toBeVisible();
+    const assigned = (
+      await (await context.request.get("/api/history")).json()
+    ).find((trip: any) => trip.state === "accepted");
+    await expect(page.locator(".vehicle-plate")).toContainText(
+      assigned.vehicle_plate,
+    );
+    await expect(page.locator(".driver-identity h2")).toContainText(
+      assigned.driver_first_name,
+    );
+    await accessible(page);
     await screenshot(driver, "driver-desktop");
     await driver.getByRole("button", { name: "شروع سفر", exact: true }).click();
     await driver
@@ -206,19 +251,14 @@ test("passenger and driver complete a real persisted journey, rating and wallet"
       driver.getByRole("button", { name: "خروج از سرویس", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "کجا می‌ریم؟" }),
+      page.getByRole("heading", { name: "رسیدی؛ سفر تمام شد" }),
     ).toBeVisible();
-    await page
-      .getByRole("button", { name: "سفرهای من", exact: true })
-      .filter({ visible: true })
-      .click();
-    await page
-      .getByRole("button", { name: "ثبت امتیاز", exact: false })
-      .first()
-      .click();
+    await page.getByRole("radio", { name: "۵ ستاره", exact: true }).check();
+    await page.getByRole("button", { name: "ثبت امتیاز", exact: true }).click();
     await expect(
       page.getByText("امتیاز شما: ۵", { exact: false }).first(),
     ).toBeVisible();
+    await accessible(page);
     await page
       .getByRole("button", { name: "کیف پول", exact: true })
       .filter({ visible: true })
@@ -336,14 +376,16 @@ test("female service and cargo quotes stay responsive at narrow widths", async (
   await login(context, "client", "09120000020");
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "کجا می‌ریم؟" }),
+    page.getByRole("heading", { name: "مبدأ سفر کجاست؟" }),
   ).toBeVisible();
   await chooseRoute(page);
-  await page.getByRole("button", { name: "بانوان همراه رانندهٔ خانم" }).click();
+  await page.getByRole("radio", { name: /بانوان همراه رانندهٔ خانم/ }).check();
   await expect(
     page.getByRole("button", { name: "درخواست بکسی بانوان" }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "باکس بسته‌های سبک" }).click();
+  await page
+    .getByRole("button", { name: "ارسال بسته و بار", exact: true })
+    .click();
   await page.getByLabel("ارزش بار، ریال").fill("100000");
   await expect(
     page.getByText("شامل ۲٬۰۰۰ ریال بیمهٔ آزمایشی، معادل ۲٪ ارزش بار"),
@@ -391,4 +433,172 @@ test("staff documents and all twenty reports render without client-side errors",
   await expect(
     page.getByRole("heading", { name: "سفر بعدی، ساده‌تر." }),
   ).toBeVisible();
+});
+
+test("explicit place search, viewport actions, payment choice, saved draft and reversible cancellation", async ({
+  page,
+  context,
+}) => {
+  await login(context, "client", "09120000020");
+  let searches = 0;
+  await page.route("**/api/places?*", (route) => {
+    searches++;
+    return route.fulfill({
+      json: [{ label: "میدان انقلاب، تهران", point: [35.701, 51.391] }],
+    });
+  });
+  await page.goto("/");
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.getByLabel("جست‌وجوی مکان در تهران").fill("میدان انقلاب");
+  expect(searches).toBe(0);
+  await page
+    .getByRole("button", { name: "جست‌وجوی مکان", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "میدان انقلاب، تهران", exact: true })
+    .click();
+  expect(searches).toBe(1);
+  for (const size of [
+    { width: 360, height: 640 },
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1440, height: 1000 },
+  ]) {
+    await page.setViewportSize(size);
+    await noOverflow(page);
+    await expect(page.locator(".pin-selection")).toHaveAttribute(
+      "data-longitude",
+      "51.391",
+    );
+    const rect = await page
+      .getByRole("button", { name: "تأیید مبدأ", exact: true })
+      .boundingBox();
+    expect(rect!.y).toBeGreaterThanOrEqual(0);
+    expect(rect!.y + rect!.height).toBeLessThanOrEqual(size.height);
+  }
+  await chooseRoute(page);
+  await expect(page.getByTestId("request-ride")).toBeEnabled();
+  const draftQuotes: any[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/quote"))
+      draftQuotes.push(request.postDataJSON());
+  });
+  await page
+    .getByRole("button", { name: "کیف پول", exact: true })
+    .filter({ visible: true })
+    .click();
+  await page
+    .getByRole("button", { name: "سفر جدید", exact: true })
+    .filter({ visible: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "انتخاب سرویس", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByTestId("request-ride")).toBeEnabled();
+  expect(draftQuotes.at(-1).pickup).toEqual([35.701, 51.391]);
+  await page
+    .getByRole("button", { name: "تغییر روش پرداخت", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("radio", { name: /نقدی/ }).check();
+  await accessible(page);
+  await page
+    .getByRole("button", { name: "تأیید روش پرداخت", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "تغییر روش پرداخت" }),
+  ).toContainText("نقدی");
+  for (const size of [
+    { width: 360, height: 640 },
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1440, height: 1000 },
+  ]) {
+    await page.setViewportSize(size);
+    await noOverflow(page);
+    const rect = await page.getByTestId("request-ride").boundingBox();
+    expect(rect!.y + rect!.height).toBeLessThanOrEqual(size.height);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId("request-ride").click();
+  await expect(
+    page.getByRole("heading", { name: "در انتظار راننده", exact: true }),
+  ).toBeVisible();
+  const history = await (await context.request.get("/api/history")).json();
+  const trip = history.find((trip: any) => trip.state === "requested");
+  expect(trip.preferred_payment).toBe("cash");
+  expect(trip.pickup_label).toBe("میدان انقلاب، تهران");
+  await page.getByRole("button", { name: "لغو درخواست", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await accessible(page);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  expect(
+    (await (await context.request.get("/api/history")).json()).find(
+      (t: any) => t.id === trip.id,
+    ).state,
+  ).toBe("requested");
+  await page.getByRole("button", { name: "لغو درخواست", exact: true }).click();
+  await page
+    .getByRole("button", { name: "بله، لغو درخواست", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "مبدأ سفر کجاست؟" }),
+  ).toBeVisible();
+  expect(
+    (await (await context.request.get("/api/history")).json()).find(
+      (t: any) => t.id === trip.id,
+    ).state,
+  ).toBe("cancelled");
+});
+
+test("late quotes cannot overwrite a new fare and wallet shortfall has a cash recovery", async ({
+  page,
+  context,
+}) => {
+  await login(context, "client", "09120000010");
+  await page.route("**/api/me", async (route) => {
+    const response = await route.fetch();
+    const value = await response.json();
+    value.account.wallet_balance = 0;
+    await route.fulfill({ json: value });
+  });
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let count = 0,
+    delivered = 0;
+  await page.route("**/api/quote", async (route) => {
+    const first = ++count <= 4;
+    if (first) await held;
+    await route.fulfill({
+      json: { cost: first ? 111 : 222, insurance: 0, km: 1 },
+    });
+    delivered++;
+  });
+  try {
+    await page.goto("/");
+    await chooseRoute(page);
+    await expect.poll(() => count).toBe(4);
+    await page.getByRole("checkbox", { name: /رفت و برگشت/ }).check();
+    await expect(page.locator(".ride-total strong")).toContainText("۲۲۲");
+    release();
+    await expect.poll(() => delivered).toBe(8);
+    await expect(page.locator(".ride-total strong")).toContainText("۲۲۲");
+    await expect(page.getByTestId("request-ride")).toBeDisabled();
+    await expect(page.getByRole("alert")).toContainText("موجودی کافی نیست");
+    await page
+      .getByRole("button", { name: "تغییر روش پرداخت", exact: true })
+      .click();
+    await page.getByRole("radio", { name: /نقدی/ }).check();
+    await page
+      .getByRole("button", { name: "تأیید روش پرداخت", exact: true })
+      .click();
+    await expect(page.getByTestId("request-ride")).toBeEnabled();
+    await expect(page.getByRole("radio", { name: /بانوان/ })).toBeDisabled();
+    await accessible(page);
+  } finally {
+    release();
+  }
 });

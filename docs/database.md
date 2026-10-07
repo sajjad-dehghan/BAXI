@@ -62,3 +62,20 @@ The job replaces only that month's summary in one transaction. It uses `SUM` per
 The fixed catalog in `src/reports.py` contains 20 parameter-free, read-only queries. Only an HR department manager can execute them. The PWA displays each report's columns and handles empty results; it never accepts arbitrary SQL from a browser. Report IDs and Persian names are exposed by `/api/staff/reports`.
 
 Original EER/ODT/PDF artifacts in `docs/legacy/database/` are preserved historical materials and do not describe this replacement schema.
+
+
+## Upgrading an existing PWA demo
+
+Fresh volumes use the current `db/main.sql`. For an existing **rebuilt PWA** database from commit `f76614e` or earlier, back up both schemas and uploads, stop only the API/web containers, then apply `db/migrations/002-booking-context.sql` using a database administrator. This additive migration checks for each column before adding it; it can be run again. It adds nullable passenger payment and origin/destination labels, preserving existing trips and their settlement rules. It does not migrate the historical Qt schema.
+
+For the local Compose demo in PowerShell:
+
+```powershell
+docker compose stop api web
+New-Item -ItemType Directory -Force artifacts | Out-Null
+docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysqldump -uroot --databases baxi_users baxi_staff --single-transaction --no-tablespaces | Set-Content -Encoding utf8 artifacts/pre-upgrade.sql
+Get-Content -Raw -Encoding utf8 db/migrations/002-booking-context.sql | docker compose exec -T -e MYSQL_PWD=baxi-local-root-only mysql mysql --default-character-set=utf8mb4 -uroot
+docker compose up --build -d
+```
+
+Store that backup outside version control and retain the existing named volumes; no volume deletion or reset is required. The running restricted application user does not receive DDL permission. Old requests have null `preferred_payment` and preserve their previous end-of-trip payment selection; newly created UI requests record and enforce the passenger's choice.

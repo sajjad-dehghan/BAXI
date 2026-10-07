@@ -25,3 +25,10 @@ Follow GitHub's [guidance on removing sensitive data](https://docs.github.com/en
 ## Reporting
 
 For a vulnerability, contact the repository maintainer privately using an available GitHub contact or private security advisory. Do not post live credentials or private documents in public issues. No response SLA or production security certification is claimed.
+
+
+## External secret-scanner check
+
+GitGuardian's PR check flagged three generic-password occurrences in `.github/workflows/ci.yml` in reconstruction commit `9948929`. These are the explicitly disposable MySQL service/application passwords used solely by the isolated GitHub Actions job; they are not credentials for a retained service. The scanner has not been disabled or broadly suppressed, and the historical-exposure concern above is separate. The external incident remains for maintainer classification in GitGuardian; passing build/tests does not clear that check.
+
+Public-place search sends only explicitly submitted queries to the configured geocoder. Avoid personal or confidential information; see [map.md](docs/map.md) for provider, caching and capacity details. Private API responses and trip records remain excluded from the PWA cache.

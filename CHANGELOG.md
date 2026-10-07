@@ -1,5 +1,14 @@
 # Changelog
 
+## Map-first ride experience — 2026-10-07
+
+- Replace the long booking form with sequential map confirmation and a fixed-action responsive sheet.
+- Compare service prices, explicitly search public places, preserve the confirmed draft during wallet navigation, and select payment before requesting.
+- Show assigned driver/vehicle identity, reversible cancellation, and an inline receipt/rating.
+- Replace driver coordinate inputs with map/device selection.
+- Add a non-destructive booking-context migration, geocoder policy controls and UX decision/evidence documentation.
+
+
 ## 2.0.0 — PWA reconstruction (2026-10-07)
 
 - Replace the active Qt desktop applications with a responsive Persian RTL React PWA and a same-origin FastAPI backend.

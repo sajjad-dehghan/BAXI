@@ -2,7 +2,7 @@
 
 A Persian, right-to-left ride and cargo **Progressive Web App**, rebuilt from a university database project. One responsive interface serves passengers, drivers and staff, backed by a Python API and MySQL transactions.
 
-[راهنمای فارسی](docs/README.fa.md) · [روایت پروژه](docs/case-study.fa.md) · [Architecture](docs/architecture.md) · [Database](docs/database.md) · [Security](SECURITY.md) · [Verification](docs/verification.md)
+[راهنمای فارسی](docs/README.fa.md) · [روایت پروژه](docs/case-study.fa.md) · [بررسی UX و تصمیم‌های طراحی](docs/ux-review.fa.md) · [Architecture](docs/architecture.md) · [Database](docs/database.md) · [Security](SECURITY.md) · [Verification](docs/verification.md)
 
 ![Passenger interface](docs/screenshots/passenger-desktop.jpg)
 
@@ -16,7 +16,7 @@ docker compose up --build -d
 
 Open **[http://localhost:8080](http://localhost:8080)**. The API, frontend and database start together; synthetic accounts, documents and completed journeys are seeded automatically. The app is exposed on the local machine only. The first build needs internet access to download dependencies and container images.
 
-`docker compose down` stops the app and preserves its data. Database files and uploaded documents live in named volumes. The schema initializer runs only on an empty database. This is a new installation, **not an in-place migration of an old BAXI server**.
+`docker compose down` stops the app and preserves its data. Database files and uploaded documents live in named volumes. The schema initializer runs only on an empty database. This is a new installation, **not an in-place migration of an old BAXI server**. Existing installations of the first rebuilt PWA must apply the additive [booking-context upgrade](docs/database.md#upgrading-an-existing-pwa-demo) before starting this API.
 
 ### Try each role
 
@@ -33,12 +33,12 @@ Choose passenger, driver or staff on the sign-in screen. “ورود با حسا
 | Driver awaiting review | `09120000070` |
 | HR manager / reviewer | Personnel code `9001` / `9002` |
 
-Staff demo password: `BaxiDemo!2026`. These are public, synthetic demo credentials, unsuitable for public deployment. To demonstrate a journey, use two browser profiles or a private window: request as a passenger, start work as a driver, accept, start and finish the trip, then rate it from history.
+Staff demo password: `BaxiDemo!2026`. These are public, synthetic demo credentials, unsuitable for public deployment. To demonstrate a journey, use two browser profiles or a private window: request as a passenger, start work as a driver, accept, start and finish the trip, then rate it on the trip receipt.
 
 ## Implemented experience
 
-- **Passengers:** phone sign-in and registration; four services (BAXI, WOMEN, BOX, BAAR); Tehran-only interactive map selection of origin/destination and optional device location; fare estimates; passenger round trips; cargo weight, value and fragility; request cancellation before departure; live status polling; history, rating and simulated wallet top-ups.
-- **Drivers:** registration with vehicle details and four private documents; pending/approved/rejected verification; eligible requests within 5 km; capacity and WOMEN eligibility checks; acceptance, departure and completion; wallet or recorded cash settlement; ratings and simulated withdrawals.
+- **Passengers:** phone sign-in and registration; four services (BAXI, WOMEN, BOX, BAAR); Tehran-only map-first booking with sequential origin/destination confirmation, explicit public-place search and optional device location; comparable service prices and passenger-selected payment; assigned driver/vehicle identity, trip receipt; passenger round trips; cargo weight, value and fragility; request cancellation before departure; live status polling; history, rating and simulated wallet top-ups.
+- **Drivers:** registration with vehicle details and four private documents; pending/approved/rejected verification; map/device-based location editing and eligible requests within 5 km; capacity and WOMEN eligibility checks; acceptance, departure and completion; wallet or recorded cash settlement; ratings and simulated withdrawals.
 - **Staff:** personnel sign-in, private document review, recorded approval/rejection. HR managers can create staff accounts and execute all 20 read-only reports.
 - **PWA:** RTL responsive layouts, bundled Vazirmatn fonts, install manifest, standard/maskable icons, standalone launch, public app shell available offline. Requests and account changes require a connection; private API responses and documents are never cached by the service worker.
 - **Data integrity:** parameterized queries, short database sessions, atomic multi-table operations, row locks for competing acceptances, single settlement and rating, idempotent wallet transfer keys, salted staff password hashes and synthetic demo data.

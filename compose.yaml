@@ -21,6 +21,7 @@ services:
       BAXI_DB_PASSWORD: baxi-local-demo-only
       BAXI_DEMO_MODE: "true"
       BAXI_SEED_DEMO: "true"
+      BAXI_GEOCODER_URL: ${BAXI_GEOCODER_URL:-https://nominatim.openstreetmap.org}
       BAXI_COOKIE_SECURE: "false"
       BAXI_ALLOWED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     volumes:

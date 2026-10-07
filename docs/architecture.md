@@ -15,6 +15,8 @@ flowchart LR
 ## Responsibilities
 
 - `web/`: separate passenger, driver, registration, wallet, staff and authentication screens; `RoutePicker.tsx` provides a lazy-loaded Leaflet map with sequential origin/destination confirmation, while `ui.tsx` provides shared controls and the decorative sign-in illustration; `lib.ts` contains API transport, types, formatting and Persian error translation.
+- `NewTrip.tsx` / `PassengerJourney.tsx`: a controlled booking draft, map and fixed-action sheet, followed by assigned-vehicle status, cancellation dialog and inline receipt/rating. Confirmed draft state survives wallet navigation only in memory.
+- `places.py`: explicit cached public-place geocoding with a shared single-process upstream rate limit and independently checked Tehran results.
 - `api.py`: validates request shapes, looks up server-side session identity, enforces role/ownership, serves authorized documents and exposes a fixed report catalog. The caller cannot supply another account ID for an owned operation.
 - `service_area.py` / `web/serviceArea.ts`: point-in-polygon checks against the same versioned Tehran GeoJSON; both trip endpoints and driver availability must be inside the city.
 - `services.py`: domain validation, state transitions, eligibility, transaction boundaries and explicit locks.
@@ -40,6 +42,8 @@ One active request per passenger and one active accepted/in-progress trip per dr
 ## Money
 
 Rates per geodesic kilometre: passenger/WOMEN 10,000 IRR; BOX 8,000; BAAR 20,000. Passenger return journeys double the base fare. BOX adds 2% of declared cargo value as demo insurance. Decimal rounding produces an integer quote.
+
+The passenger selects wallet or cash before booking. The choice and place labels are persisted on the request. Explicit wallet requests check funds before insertion, and completion enforces the selected method. Legacy requests with a null preference retain their earlier payment workflow.
 
 Wallet payment debits the passenger and credits `floor(fare × 0.8)` to the driver. Recorded cash payment leaves the passenger wallet alone and debits the driver's wallet by `ceil(fare × 0.2)` as commission. Insufficient funds reject and roll back the entire operation. Demo deposit/withdrawal keys identify one account, operation and amount; retries do not post twice. These rules demonstrate database integrity, not bank settlement or insurance coverage.
 

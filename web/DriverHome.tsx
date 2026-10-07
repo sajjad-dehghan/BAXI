@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
-import { CarFront, ChevronDown, FileCheck2 } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { CarFront, FileCheck2, MapPin } from "lucide-react";
 import { Me, Trip, stateNames, humanError, api } from "./lib";
-import { Field, Empty } from "./ui";
+import { Busy, Empty } from "./ui";
 import { TripCard } from "./TripCard";
+import { inTehran, Point } from "./serviceArea";
+const RideMap = lazy(() =>
+  import("./RoutePicker").then((module) => ({ default: module.RideMap })),
+);
 export function DriverHome({
   me,
   history,
@@ -17,8 +21,58 @@ export function DriverHome({
   online: boolean;
 }) {
   const [location, setLocation] = useState<[number, number]>([
-    35.7005, 51.3376,
+    Number(me.account?.latitude) || 35.7005,
+    Number(me.account?.longitude) || 51.3376,
   ]);
+  const [candidate, setCandidate] = useState<Point>(location);
+  const [target, setTarget] = useState<Point>(location);
+  const locationDialog = useRef<HTMLDialogElement>(null);
+  const [locationError, setLocationError] = useState("");
+  const [locating, setLocating] = useState(false);
+  const locationAttempt = useRef(0);
+  useEffect(
+    () => () => {
+      locationAttempt.current++;
+    },
+    [],
+  );
+  function closeLocation() {
+    locationAttempt.current++;
+    setLocating(false);
+    locationDialog.current?.close();
+  }
+  function locate() {
+    if (!navigator.geolocation) {
+      setLocationError("موقعیت دستگاه در دسترس نیست؛ از نقشه انتخاب کن.");
+      return;
+    }
+    const attempt = ++locationAttempt.current;
+    setLocating(true);
+    setLocationError("");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (attempt !== locationAttempt.current) return;
+        setLocating(false);
+        const point: Point = [
+          position.coords.latitude,
+          position.coords.longitude,
+        ];
+        if (!inTehran(point)) {
+          setLocationError("موقعیت شما خارج از تهران است.");
+          return;
+        }
+        setCandidate(point);
+        setTarget(point);
+      },
+      () => {
+        if (attempt === locationAttempt.current) {
+          setLocating(false);
+          setLocationError("موقعیت دریافت نشد؛ از روی نقشه انتخاب کن.");
+        }
+      },
+      { timeout: 10000, maximumAge: 0 },
+    );
+  }
   const [available, setAvailable] = useState<Trip[]>([]);
   const [onDuty, setOnDuty] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -26,7 +80,11 @@ export function DriverHome({
     ["accepted", "in_progress"].includes(t.state),
   );
   useEffect(() => {
-    if (!onDuty || !online || active) return;
+    if (active) {
+      setAvailable([]);
+      return;
+    }
+    if (!onDuty || !online) return;
     let valid = true;
     async function refresh() {
       try {
@@ -91,35 +149,80 @@ export function DriverHome({
               {onDuty ? "خروج از سرویس" : "شروع کار"}
             </button>
           </div>
-          <details className="panel coordinate-editor">
-            <summary>
-              موقعیت راننده
-              <ChevronDown size={16} />
-            </summary>
-            <div className="form-grid">
-              {[0, 1].map((i) => (
-                <Field
-                  key={i}
-                  label={i === 0 ? "عرض جغرافیایی" : "طول جغرافیایی"}
-                >
-                  <input
-                    type="number"
-                    step="any"
-                    dir="ltr"
-                    value={location[i]}
-                    onChange={(e) =>
-                      setLocation(
-                        (old) =>
-                          old.map((v, j) =>
-                            i === j ? Number(e.target.value) : v,
-                          ) as [number, number],
-                      )
-                    }
-                  />
-                </Field>
-              ))}
+          <div className="panel driver-location-summary">
+            <MapPin size={22} />
+            <div>
+              <strong>موقعیت دریافت درخواست</strong>
+              <p>
+                نقطهٔ نمونهٔ شروع: میدان آزادی تهران؛ موقعیتت را بررسی و اصلاح
+                کن.
+              </p>
             </div>
-          </details>
+            <button
+              className="secondary"
+              onClick={() => {
+                setCandidate(location);
+                setTarget([...location]);
+                setLocationError("");
+                locationDialog.current?.showModal();
+              }}
+            >
+              تغییر موقعیت
+            </button>
+          </div>
+          <dialog
+            ref={locationDialog}
+            className="driver-location-dialog"
+            aria-labelledby="driver-location-title"
+            onCancel={() => {
+              locationAttempt.current++;
+              setLocating(false);
+            }}
+          >
+            <header>
+              <h2 id="driver-location-title">موقعیت راننده در تهران</h2>
+              <button className="text-button" onClick={closeLocation}>
+                بازگشت
+              </button>
+            </header>
+            <div className="driver-location-map">
+              <Suspense fallback={<Busy />}>
+                <RideMap
+                  pickup={location}
+                  dropoff={location}
+                  stage="pickup"
+                  target={target}
+                  onMove={setCandidate}
+                  onLocate={locate}
+                  locating={locating}
+                />
+              </Suspense>
+            </div>
+            <p>
+              نقشه را جابه‌جا کن یا از موقعیت دستگاه استفاده کن. نقطهٔ نمونه،
+              موقعیت واقعی دستگاه نیست.
+            </p>
+            {locationError && (
+              <p className="inline-error" role="alert">
+                {locationError}
+              </p>
+            )}
+            {!inTehran(candidate) && (
+              <p className="inline-error" role="alert">
+                نقطه باید داخل شهر تهران باشد.
+              </p>
+            )}
+            <button
+              className="primary wide"
+              disabled={locating || !inTehran(candidate)}
+              onClick={() => {
+                setLocation(candidate);
+                closeLocation();
+              }}
+            >
+              تأیید موقعیت راننده
+            </button>
+          </dialog>
           {loadError && (
             <p role="alert" className="inline-error">
               {loadError}

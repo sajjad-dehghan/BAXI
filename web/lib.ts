@@ -17,7 +17,22 @@ export type Draft = {
   cargo_value: number;
   cargo_type: string;
   client_helped: boolean;
+  payment: "wallet-to-wallet" | "cash";
+  pickup_label: string;
+  dropoff_label: string;
 };
+export type BookingState = {
+  draft: Draft;
+  stage: "pickup" | "dropoff" | "ready";
+  pickupConfirmed: boolean;
+  dropoffConfirmed: boolean;
+};
+export const freshBooking = (): BookingState => ({
+  draft: freshDraft(),
+  stage: "pickup",
+  pickupConfirmed: false,
+  dropoffConfirmed: false,
+});
 export const money = (value: number) =>
   new Intl.NumberFormat("fa-IR").format(value);
 export const serviceNames: Record<string, string> = {
@@ -39,16 +54,25 @@ export const stateNames: Record<string, string> = {
 export const freshDraft = (): Draft => ({
   service: "baxi",
   pickup: [35.7005, 51.3376],
-  dropoff: [35.7112, 51.3786],
+  dropoff: [35.7005, 51.3376],
   round_trip: false,
   cargo_weight: 5,
   cargo_value: 100000,
   cargo_type: "unfragile",
   client_helped: false,
+  payment: "wallet-to-wallet",
+  pickup_label: "نقطهٔ انتخاب‌شده روی نقشه",
+  dropoff_label: "نقطهٔ انتخاب‌شده روی نقشه",
 });
 
 export function humanError(raw: string): string {
   const rules: [RegExp, string][] = [
+    [
+      /Insufficient wallet/i,
+      "موجودی کیف پول کافی نیست؛ نقدی را انتخاب کن یا کیف پول را شارژ کن.",
+    ],
+    [/selected payment/i, "روش پرداخت باید همان انتخاب مسافر باشد."],
+    [/Cargo weight|Cargo value/i, "وزن و ارزش بار را با عدد معتبر وارد کن."],
     [/within Tehran/i, "سرویس فقط در محدودهٔ شهر تهران فعال است."],
     [
       /Failed to fetch|NetworkError|Load failed/i,

@@ -30,6 +30,52 @@ def finish(accounts, service="baxi"):
     return cid, driver, rid
 
 
+def test_passenger_payment_labels_and_assigned_vehicle_survive_settlement(accounts):
+    cid, driver = accounts["client"], accounts["driver"]
+    before = svc.balance(cid, "client")
+    rid = svc.create_request(
+        cid,
+        draft(payment="cash", pickup_label="میدان آزادی", dropoff_label="میدان انقلاب"),
+    )
+    requested = next(t for t in svc.history(cid, "client") if t["id"] == rid)
+    assert requested["preferred_payment"] == "cash"
+    assert requested["driver_first_name"] is None
+    assert requested["pickup_label"] == "میدان آزادی"
+    svc.accept_request(driver, rid)
+    accepted = next(t for t in svc.history(cid, "client") if t["id"] == rid)
+    assert accepted["driver_first_name"] == "Test"
+    assert accepted["vehicle_name"] == "Synthetic"
+    assert accepted["vehicle_plate"]
+    svc.start_trip(driver, rid)
+    with pytest.raises(ValueError, match="selected payment"):
+        svc.complete_trip(driver, rid, "wallet-to-wallet")
+    assert (
+        one("SELECT state FROM service_requests WHERE id=%s", (rid,))["state"]
+        == "in_progress"
+    )
+    svc.complete_trip(driver, rid, "cash")
+    svc.complete_trip(driver, rid, "cash")
+    assert svc.balance(cid, "client") == before
+    completed = next(t for t in svc.history(cid, "client") if t["id"] == rid)
+    assert completed["method_of_payment"] == "cash"
+    assert completed["dropoff_label"] == "میدان انقلاب"
+
+
+def test_wallet_shortfall_blocks_explicit_wallet_booking_but_allows_cash(accounts):
+    cid = accounts["client"]
+    execute("UPDATE clients SET wallet_balance=0 WHERE id=%s", (cid,))
+    with pytest.raises(ValueError, match="Insufficient"):
+        svc.create_request(cid, draft(payment="wallet-to-wallet"))
+    assert not one("SELECT id FROM service_requests WHERE client_id=%s", (cid,))
+    rid = svc.create_request(cid, draft(payment="cash"))
+    assert (
+        one("SELECT preferred_payment FROM service_requests WHERE id=%s", (rid,))[
+            "preferred_payment"
+        ]
+        == "cash"
+    )
+
+
 @pytest.mark.parametrize("service", ["baxi", "women", "box", "baar"])
 def test_complete_each_service_and_settle_exactly_once(accounts, service):
     cid = accounts["female"] if service == "women" else accounts["client"]
