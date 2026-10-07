@@ -1,28 +1,94 @@
-# BAXI · بکسی
+<div align="center">
+  <img src="public/icons/icon-192.png" width="76" height="76" alt="BAXI app icon">
+  <h1>BAXI · بکسی</h1>
+  <p><strong>Choose two places. Know the price. Follow the journey.</strong></p>
+  <p>A Persian, map-first ride and cargo PWA for Tehran.<br>Rebuilt from an undergraduate database project, with product decisions and transactional behavior you can inspect.</p>
+  <p>
+    <a href="https://github.com/sajjad-dehghan/BAXI/actions/workflows/ci.yml">Build &amp; test CI</a> ·
+    <a href="#run-it-locally">Run the demo</a> ·
+    <a href="docs/README.fa.md">راهنمای فارسی</a> ·
+    <a href="docs/case-study.fa.md">روایت محصول</a>
+  </p>
+  <p><strong>Persian RTL · Installable PWA · React + TypeScript · FastAPI · MySQL 8.4</strong></p>
+</div>
 
-A Persian, right-to-left ride and cargo **Progressive Web App**, rebuilt from a university database project. One responsive interface serves passengers, drivers and staff, backed by a Python API and MySQL transactions.
+![BAXI on desktop: Tehran map, confirmed places, upfront fare and transparent price breakdown](docs/screenshots/pricing-breakdown-desktop.png)
 
-[راهنمای فارسی](docs/README.fa.md) · [روایت پروژه](docs/case-study.fa.md) · [بررسی UX و تصمیم‌های طراحی](docs/ux-review.fa.md) · [Architecture](docs/architecture.md) · [Database](docs/database.md) · [Security](SECURITY.md) · [Verification](docs/verification.md)
+<p dir="rtl">بکسی از یک پروژهٔ دانشگاهی دسکتاپ به یک اپلیکیشن وب فارسی برای سفر و حمل بار در تهران بازسازی شده است. مبدأ و مقصد روی نقشه انتخاب می‌شوند، قیمت پیش از درخواست مشخص است و مسافر، راننده و کارکنان هر کدام جریان کاری خود را دارند. این مخزن هم برنامهٔ قابل اجراست، هم مستند تصمیم‌های محصول و فنی آن.</p>
 
-![Passenger interface](docs/screenshots/passenger-desktop.jpg)
+**This is a working educational demo.** It persists journeys and settlements in MySQL, using synthetic accounts and simulated money. Tariffs are illustrative; SMS, banking, street routing and insurance are not connected. There is no hosted public demo: the command below starts it on your own computer.
 
-## Run the complete local demo
+[Product experience](#the-product-experience) · [Pricing](#a-price-you-can-explain) · [Architecture](#under-the-interface) · [Development](#develop-locally) · [Verification](#verified-behavior) · [Origins & credits](#origins-and-credits)
 
-Install Docker Desktop with Compose, then run from the repository root:
+## The product experience
+
+BAXI brings four services into one journey: **BAXI** for passenger rides, **WOMEN** for female passengers and drivers, **BOX** for parcels, and **BAAR** for urban cargo. A shared journey model connects booking, dispatch, payment and the receipt.
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/pricing-services-mobile.png" width="260" alt="Mobile service selection with final fares in toman"><br><strong>Compare before requesting</strong><br>Service, payment and the final fare in one place.</td>
+    <td align="center" width="50%"><img src="docs/screenshots/pricing-breakdown-mobile.png" width="260" alt="Expanded mobile fare details showing the calculation"><br><strong>Understand the amount</strong><br>A breakdown that adds up to the booked fare.</td>
+  </tr>
+</table>
+
+These are screenshots of the running app with synthetic data and actual OpenStreetMap tiles. [Map sources and attribution →](docs/map.md)
+
+### Decisions that shape the journey
+
+- **Start with the map.** Confirm the origin, then the destination using a movable center pin. Explicit public-place search and optional device location help position it. Tehran's city boundary is enforced in both the browser and API.
+- **Make the commitment clear.** Compare final service prices, choose cash or wallet, inspect the calculation, then request. An expired quote requires a fresh price and another confirmation.
+- **Keep the journey continuous.** Assigned driver and vehicle, trip progress, cancellation before departure, receipt and rating follow the same booking. Status updates use polling.
+- **Design for recovery.** A wallet shortfall offers a way forward. Confirmed places survive a visit to the wallet. Retrying a booking or transfer must not duplicate it.
+- **Use one flow across screen sizes.** Mobile uses a map and bottom sheet with a persistent primary action; desktop uses a panel beside the map. Persian RTL, bundled Vazirmatn and restrained purple accents carry through both.
+
+The redesign follows familiar ride-hailing interaction patterns. It is an implemented design review, not a claim of completed user research or measured conversion improvement. [UX review and acceptance criteria →](docs/ux-review.fa.md)
+
+### Three roles, one system
+
+| Role | What works in the demo |
+| --- | --- |
+| **Passenger** | Phone sign-in and registration; four-service booking; passenger round trips; cargo details; upfront price and payment choice; assigned vehicle; pre-departure cancellation; history, receipts, ratings and simulated wallet top-ups. |
+| **Driver** | Vehicle registration and four private documents; verification status; reported location; eligible requests within 5 km; acceptance, start and completion; gross fare, commission and net earnings; simulated withdrawals. |
+| **Staff** | Personnel sign-in, private document review and recorded approval/rejection. HR managers can create staff accounts and run all 20 read-only reports. |
+
+WOMEN eligibility, cargo weight and vehicle capacity are checked on the server. Nearby dispatch uses the driver's last reported location; it does not imply continuous vehicle tracking.
+
+## Run it locally
+
+**Prerequisite:** Docker Desktop with Compose running. The first build needs internet access for images and dependencies.
 
 ```sh
+git clone https://github.com/sajjad-dehghan/BAXI.git
+cd BAXI
 docker compose up --build -d
 ```
 
-Open **[http://localhost:8080](http://localhost:8080)**. The API, frontend and database start together; synthetic accounts, documents and completed journeys are seeded automatically. The app is exposed on the local machine only. The first build needs internet access to download dependencies and container images.
+Open **[localhost:8080](http://localhost:8080)**. Compose starts the web app, API and MySQL together, and seeds synthetic accounts, documents and completed journeys. Services bind to the local machine.
 
-`docker compose down` stops the app and preserves its data. Database files and uploaded documents live in named volumes. The schema initializer runs only on an empty database. This is a new installation, **not an in-place migration of an old BAXI server**. Existing installations of the first rebuilt PWA must apply the additive [booking-context upgrade](docs/database.md#upgrading-an-existing-pwa-demo) before starting this API.
+Already cloned? Run only the last command from the repository root.
 
-### Try each role
+```sh
+docker compose ps          # Check service health
+docker compose logs api    # Inspect API startup
+docker compose down        # Stop; keep database and uploads
+```
 
-Choose passenger, driver or staff on the sign-in screen. “ورود با حساب نمونه” opens the corresponding demo account. Phone codes appear on the screen in this explicitly educational mode; no SMS is sent.
+Database and uploads persist in named volumes. Initialization runs only on an empty database. Existing rebuilt PWA databases need the additive **002 booking-context** and **003 pricing** migrations after backup; see the [upgrade instructions](docs/database.md#upgrading-an-existing-pwa-demo). This setup does not import the original Qt application's database.
 
-| Role | Synthetic account |
+### Walk through a complete ride
+
+1. Open two browser profiles, or a normal and a private window.
+2. Sign in as a passenger, select two points inside Tehran, compare services and confirm the fare and payment method.
+3. In the other window, sign in as the corresponding driver, start work and accept the nearby request.
+4. Start and finish the trip as the driver. Review fare, commission and net earnings.
+5. Return to the passenger's receipt, check the settlement and leave a rating.
+
+Choose a role on the sign-in screen and use **«ورود با حساب نمونه»**, or enter a synthetic account below. Demo phone codes appear on screen; no SMS is sent.
+
+<details>
+<summary><strong>Demo accounts for every role</strong></summary>
+
+| Account | Phone / personnel code |
 | --- | --- |
 | Passenger | `09120000010` |
 | Female passenger | `09120000020` |
@@ -31,34 +97,96 @@ Choose passenger, driver or staff on the sign-in screen. “ورود با حسا
 | Box courier | `09120000050` |
 | Cargo driver | `09120000060` |
 | Driver awaiting review | `09120000070` |
-| HR manager / reviewer | Personnel code `9001` / `9002` |
+| HR manager / reviewer | `9001` / `9002` |
 
-Staff demo password: `BaxiDemo!2026`. These are public, synthetic demo credentials, unsuitable for public deployment. To demonstrate a journey, use two browser profiles or a private window: request as a passenger, start work as a driver, accept, start and finish the trip, then rate it on the trip receipt.
+Staff demo password: `BaxiDemo!2026`. These credentials are public, synthetic and intended only for the local demo.
 
-## Implemented experience
+</details>
 
-- **Passengers:** phone sign-in and registration; four services (BAXI, WOMEN, BOX, BAAR); Tehran-only map-first booking with sequential origin/destination confirmation, explicit public-place search and optional device location; comparable service prices and passenger-selected payment; assigned driver/vehicle identity, trip receipt; passenger round trips; cargo weight, value and fragility; request cancellation before departure; live status polling; history, rating and simulated wallet top-ups.
-- **Drivers:** registration with vehicle details and four private documents; pending/approved/rejected verification; map/device-based location editing and eligible requests within 5 km; capacity and WOMEN eligibility checks; acceptance, departure and completion; wallet or recorded cash settlement; ratings and simulated withdrawals.
-- **Staff:** personnel sign-in, private document review, recorded approval/rejection. HR managers can create staff accounts and execute all 20 read-only reports.
-- **PWA:** RTL responsive layouts, bundled Vazirmatn fonts, install manifest, standard/maskable icons, standalone launch, public app shell available offline. Requests and account changes require a connection; private API responses and documents are never cached by the service worker.
-- **Data integrity:** parameterized queries, short database sessions, atomic multi-table operations, row locks for competing acceptances, single settlement and rating, idempotent wallet transfer keys, salted staff password hashes and synthetic demo data.
+### Install the PWA
 
-Booking uses a real OpenStreetMap basemap, movable center pin and explicit origin/destination confirmation, restricted to the Tehran city boundary in both browser and API. See [map coverage and attribution](docs/map.md). Pricing uses straight-line geodesic distance, base/minimum fares and cargo weight bands. Five-minute quotes lock the fare and driver net at booking. All UI amounts are **toman (تومان)**; the API/database retain integer IRR. Rates are illustrative; there is no real insurance, road routing, traffic pricing or real-money wallet movement. See the [pricing policy](docs/pricing.fa.md). [Feature boundaries and original work](docs/provenance.md) explain what is implemented and what remains a future integration.
+Open the production build online once, then use Chrome/Edge's install action. On iPhone: **Safari → Share → Add to Home Screen**. A self-hosted domain requires HTTPS; localhost supports local testing. The Vite development server intentionally does not register the production service worker.
 
-## Install as an app
+The public app shell can reopen offline. Signing in, requesting a ride, settling payments and fetching account data require a connection. Private API responses and identity documents are excluded from the service-worker cache.
 
-After opening the production build online once, use Chrome/Edge’s install action, or Safari → Share → Add to Home Screen on iPhone. A self-hosted installation requires HTTPS for service workers and device features; localhost is suitable for local testing. `npm run dev` intentionally does not register the production service worker. No app-store package is required.
+## A price you can explain
+
+The server owns the fare. A browser cannot submit its own amount.
+
+| Illustrative tariff | Base | Per km | Minimum |
+| --- | ---: | ---: | ---: |
+| BAXI / WOMEN | 20,000 toman | 6,000 toman | 40,000 toman |
+| BOX | 15,000 toman | 4,000 toman | 30,000 toman |
+| BAAR | 60,000 toman | 12,000 toman | 100,000 toman |
+
+Distance currently means **straight-line geodesic distance**, not a street route. WOMEN has exactly the same tariff as BAXI.
+
+```text
+One-way fare = round half up to 1,000 toman (
+    max(minimum, base + distance charge) × cargo weight factor
+)
+Passenger return journey = 2 × rounded one-way fare
+```
+
+BOX weight bands are up to **5 / 10 / 20 kg**; BAAR bands are up to **500 / 1,000 / 2,000 kg**. Their respective factors are **1 / 1.25 / 1.5**, with vehicle capacity checked separately. Fragility and customer assistance are handling information, with no extra charge. Declared cargo value does not purchase insurance.
+
+- **Before booking:** an account-bound quote contains an ID, tariff version, exact breakdown and five-minute expiry. Changing the route, service, weight or return option requires a new quote.
+- **At booking:** one transaction saves the fare, breakdown, commission and driver net. Reusing the same quote returns the same request. A tariff update cannot silently change a booked fare.
+- **At completion:** cash and wallet settlement use the stored amounts and cannot settle twice. The default commission is 20%, configurable per service in a new tariff version.
+- **In the interface:** every monetary amount is shown in **toman**. API/storage amounts remain integer **IRR**. Historical fractions of a toman retain one decimal place.
+
+Waiting and pre-start cancellation are free. There is no demand surge, traffic fee, toll, added tax, discount or real insurance in this version. Legacy journeys retain their amounts and previous settlement rules, without invented itemized receipts.
+
+**Policy source:** [`src/pricing-policy.json`](src/pricing-policy.json) · **Engine:** [`src/pricing.py`](src/pricing.py) · **Full Persian policy:** [docs/pricing.fa.md](docs/pricing.fa.md)
+
+## Under the interface
+
+```mermaid
+flowchart LR
+  P["Persian RTL PWA\nReact · TypeScript · Leaflet"] --> W["nginx\nSame-origin /api proxy"]
+  W --> A["FastAPI\nAuthentication · ownership"]
+  A --> S["Application services\nQuotes · dispatch · settlement"]
+  S --> D[("MySQL 8.4\nInnoDB transactions")]
+  A --> U["Private document storage"]
+```
+
+| Layer | Responsibility |
+| --- | --- |
+| **React + TypeScript + Vite** | Responsive screens, booking state, API client and build-time checks. |
+| **Leaflet + OpenStreetMap** | Interactive basemap and shared Tehran boundary; explicit geocoder search. |
+| **FastAPI + Python** | Authentication, role/record ownership, input validation and application rules. |
+| **MySQL 8.4** | Relational records, views, triggers, row locks and atomic financial operations. |
+| **Service worker + manifest** | Installable public shell, versioned assets and offline entry screen. |
+| **Docker Compose + nginx** | Reproducible local stack and one browser-facing origin. |
+
+### The invariants matter as much as the screens
+
+- A booking creates its destination, service details and price snapshot together, or creates none of them.
+- Competing drivers cannot both accept the same request.
+- A completed trip or retried wallet operation cannot move money twice through the API.
+- Payment choice, Tehran coverage, WOMEN eligibility, capacity and record ownership are validated on the server.
+- Booked price snapshots are immutable; income reports use saved driver earnings.
+- Browsers receive neither database credentials nor public links to private driver documents.
+
+Sessions use opaque HttpOnly cookies and server-held state. The current demo runs one API process; shared session storage is needed before multiple instances. [Architecture](docs/architecture.md) · [Database model, reports and migrations](docs/database.md) · [Security boundaries](SECURITY.md)
 
 ## Develop locally
 
-Python 3.12+, Node.js 24+, and MySQL 8.4 are the supported development baseline.
+Supported baseline: **Python 3.12+ · Node.js 24+ · MySQL 8.4**. Use MySQL from Compose and run the API and frontend on the host.
 
 ```sh
 docker compose up -d mysql
 python -m venv .venv
 ```
 
-Activate `.venv` (`.venv\Scripts\Activate.ps1` on PowerShell, `source .venv/bin/activate` on Linux/macOS), copy `.env.example` to `.env`, then:
+Activate the environment and create your local configuration:
+
+| Shell | Activate | Copy configuration once |
+| --- | --- | --- |
+| PowerShell | `.venv\Scripts\Activate.ps1` | `Copy-Item .env.example .env` |
+| Linux / macOS | `source .venv/bin/activate` | `cp .env.example .env` |
+
+Then install, seed and start the API:
 
 ```sh
 python -m pip install -r requirements-dev.txt
@@ -67,42 +195,85 @@ npm ci
 python -m uvicorn api:app --app-dir src --host 127.0.0.1 --port 8000
 ```
 
-In another terminal: `npm run dev`, then open [http://127.0.0.1:5173](http://127.0.0.1:5173). Vite proxies `/api` to Python; browser code never receives database credentials. API documentation: [http://127.0.0.1:8000/api/docs](http://127.0.0.1:8000/api/docs).
+In a second terminal, run `npm run dev` and open **[127.0.0.1:5173](http://127.0.0.1:5173)**. Vite proxies `/api` to the Python server. Interactive API docs are at **[127.0.0.1:8000/api/docs](http://127.0.0.1:8000/api/docs)**.
 
-For installation/offline testing, run `npm run build` and `npm run preview` instead. Preview runs at port `4173` with the same API proxy. If PyPI is inaccessible in your region, select a trusted reachable package index locally; Docker accepts the optional `BAXI_PIP_INDEX_URL` setting in your untracked `.env`. The default remains official PyPI.
+For PWA/offline testing, use `npm run build` followed by `npm run preview`; preview runs on port `4173` with the same API proxy. Keep the API running.
 
-## Verify changes
+<details>
+<summary>Dependency downloads and local configuration</summary>
+
+`.env` is untracked. Start from [`.env.example`](.env.example), and keep personal credentials and database backups out of Git. Compose supplies its own explicitly synthetic local database settings.
+
+The default Python index is official PyPI. If it is inaccessible in your region, select a trusted reachable index locally; Docker accepts `BAXI_PIP_INDEX_URL` from your untracked `.env`.
+
+</details>
+
+## Verified behavior
+
+The **2026-10-07 verification record** includes **101 Python tests with real MySQL**, **10 Playwright scenarios**, a strict TypeScript build, Ruff and Prettier checks. GitHub Actions also passed the build and test suites for the pricing implementation. [Full evidence and limits →](docs/verification.md)
+
+Coverage includes complete passenger/driver journeys, cash and wallet settlement, ownership, competing acceptance, retries, all 20 reports, weight boundaries, expired quotes, preserved historical amounts and repeatable migrations. Layout checks cover **360, 390, 768 and 1440 px**. Automated accessibility checks found no violations on the tested screens; physical-device installation and a full manual accessibility audit remain outside that evidence.
 
 ```sh
 ruff check src scripts tests
 ruff format --check src scripts tests
+npm run format:check
 python -m pytest -q
 npm run build
 npm run test:e2e
 ```
 
-Set `BAXI_RUN_INTEGRATION=1` to include MySQL/API tests **only against an initialized, seeded disposable local database**. Otherwise those tests are skipped. Browser tests require the API running on port 8000 and Chrome installed; they start the production preview automatically. For bundled Chromium, run `npx playwright install chromium` and set `BAXI_BROWSER_CHANNEL=chromium`. Browser tests modify only designated synthetic demo accounts.
+MySQL/API tests are opt-in: set `BAXI_RUN_INTEGRATION=1` against an initialized, seeded **disposable local database**. Without it, those tests skip. The Python suite reads your local `.env`.
 
-GitHub Actions runs the build, Python/MySQL tests and browser checks using an isolated database. See [verification evidence and limitations](docs/verification.md).
+By default, browser tests start the production preview and expect the API on port `8000`, with Chrome installed. Alternatively, test the running Docker app in PowerShell:
 
-## Repository
-
-```text
-web/                   React screens, shared UI, API client, responsive styles
-src/                   FastAPI endpoints, application rules, auth and DB access
-db/                    Fresh MySQL schemas, views, triggers, restricted local grants
-scripts/               Synthetic seed, monthly aggregation, PWA build utilities
-tests/                 Unit, real MySQL/API and Playwright browser tests
-public/                Manifest and install icons
-assets/demo-documents/ Explicitly synthetic identity/vehicle documents
-docs/screenshots/      Screens captured from the running PWA
-docs/legacy/           Original Qt sources, UI screenshots and EER artifacts
+```powershell
+$env:BAXI_RUN_INTEGRATION='1'
+python -m pytest -q
+$env:BAXI_BASE_URL='http://127.0.0.1:8080'
+npm run test:e2e
 ```
 
-## Origin and credits
+For bundled Chromium, run `npx playwright install chromium` and set `BAXI_BROWSER_CHANNEL=chromium`. Browser tests create synthetic journeys/accounts and may top up designated demo passenger wallets; never point them at real user data.
 
-Originally built by **Navid, Sajad and Arsham** for the **db4022 database course at Bu-Ali Sina University**. The original project used PyQt6 and MySQL. This PWA is a later reconstruction and redesign; individual historical contributions have not been verified. Original design sources and Git history are retained for provenance, while the active application has been replaced.
+The external GitGuardian check still requires maintainer classification of three disposable CI-password occurrences. Passing build/test CI does not clear that check or establish that historical credentials were revoked. [Details →](SECURITY.md)
 
-[Legacy artifacts and Figma references](docs/provenance.md) · [Changes from the original](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+## Find your way around
 
-No project-wide open-source license has been selected or verified with all original contributors. Public visibility alone does not establish permission to redistribute the original code or design assets. Third-party dependencies retain their own licenses.
+```text
+web/                    Screens, shared UI, booking flow and API client
+src/                    API, auth, application services and pricing engine
+  pricing-policy.json   Versioned rates, limits, commission and rounding
+  pricing.py            Deterministic fare calculation and breakdown
+  services.py           Transactional booking, dispatch and settlement
+db/                     MySQL schema, views, triggers and additive migrations
+scripts/                Synthetic seed, monthly income and PWA build utilities
+tests/                  Unit, MySQL/API and Playwright tests
+public/                 Manifest, install icons and Tehran boundary
+assets/demo-documents/  Explicitly synthetic verification documents
+docs/screenshots/       Captures from the running application
+docs/legacy/            Preserved university design and database artifacts
+```
+
+| Read next | What it explains |
+| --- | --- |
+| [راهنمای فارسی](docs/README.fa.md) | اجرا، نقش‌ها، نصب و محدودهٔ نسخه |
+| [روایت پروژه](docs/case-study.fa.md) | پروژهٔ دانشگاهی، نقش محصول و بازسازی بعدی |
+| [بررسی UX](docs/ux-review.fa.md) | تصمیم‌های طراحی، جریان سفر و معیارهای پذیرش |
+| [سیاست قیمت‌گذاری](docs/pricing.fa.md) | تعرفه، محاسبه، تثبیت قیمت و تسویه |
+| [Architecture](docs/architecture.md) | Components, API and trust boundaries |
+| [Database](docs/database.md) | Relationships, reports, transactions and upgrades |
+| [Map coverage](docs/map.md) | Tehran boundary, search providers and attribution |
+| [Verification](docs/verification.md) | What was tested and what remains unverified |
+| [Provenance](docs/provenance.md) | Original artifacts, Figma references and feature boundaries |
+| [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) | Changes and contribution workflow |
+
+## Origins and credits
+
+BAXI began as a **PyQt6 + MySQL undergraduate project** by **Navid, Sajad and Arsham** for the **db4022 database course at Bu-Ali Sina University**. Sajad identifies his original role as **product**; the detailed historical division of work has not been verified.
+
+The October 2026 rebuild introduced the current PWA, API, replacement schema, pricing policy and tests with AI assistance. That later work is documented separately from the original university contribution. The original implementation remains recoverable in Git history at `8a0f05f`; Qt design files, screenshots and EER materials are preserved in [`docs/legacy`](docs/legacy).
+
+Real SMS, banking, insurance, road routing/ETA, continuous dispatch and production operations remain future integrations. Disabling demo mode does not make this a production service. Historical credential revocation remains unresolved; see [SECURITY.md](SECURITY.md).
+
+**Licensing:** no project-wide license has been approved or verified with the original contributors. Public repository visibility does not grant redistribution rights. Third-party software, fonts and map data retain their respective licenses and attribution requirements.

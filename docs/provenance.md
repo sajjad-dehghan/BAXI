@@ -28,7 +28,7 @@ The active demo implements authentication/registration, four-service quotation a
 These integrations are deliberately explicit future work:
 
 - SMS delivery and genuine phone ownership verification.
-- Address search, road routing, traffic and ETA. Booking now uses real OpenStreetMap tiles and Tehran-only pin selection; the connecting line represents straight-line distance.
+- Road routing, traffic and ETA. Booking supports explicit public-place search, real OpenStreetMap tiles and Tehran-only pin selection; the connecting line represents straight-line distance.
 - Real payment gateway, bank withdrawals, insurance and identity-document verification.
 - Push notifications, background location and multi-instance real-time dispatch.
 - Shared production session storage, document scanning/retention, account recovery and production operations.
