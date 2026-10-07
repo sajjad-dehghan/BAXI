@@ -18,6 +18,7 @@ import services as svc
 from config import settings
 from database import one, rows
 from generate_random_number import VerificationCodes
+from places import search_places
 from reports import REPORTS, run_report
 from security import normalize_phone
 
@@ -84,6 +85,9 @@ class DraftInput(Input):
     cargo_value: int = Field(default=0, ge=0, le=10**12)
     cargo_type: str = "unfragile"
     client_helped: bool = False
+    payment: str | None = None
+    pickup_label: str = Field(default="", max_length=240)
+    dropoff_label: str = Field(default="", max_length=240)
 
 
 class LocationInput(Input):
@@ -409,6 +413,12 @@ def create_request(body: DraftInput, identity=Depends(current)):
 def history(identity=Depends(current)):
     require(identity, "client", "driver")
     return svc.history(identity.account_id, identity.role)
+
+
+@app.get("/api/places")
+def places(q: str, identity=Depends(current)):
+    require(identity, "client", "driver")
+    return search_places(q)
 
 
 @app.post("/api/available")

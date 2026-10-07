@@ -17,6 +17,7 @@ export function TripCard({
 }) {
   const [rating, setRating] = useState(5);
   const [payment, setPayment] = useState("wallet-to-wallet");
+  const paymentForTrip = trip.preferred_payment || payment;
   const active = ["requested", "accepted", "in_progress"].includes(trip.state);
   return (
     <article className={"panel trip-card " + (active ? "active-trip" : "")}>
@@ -36,7 +37,7 @@ export function TripCard({
       <div className="trip-route">
         <div>
           <span className="dot purple" />
-          <span>مبدأ</span>
+          <span>مبدأ · {trip.pickup_label || "نقطهٔ روی نقشه"}</span>
           <bdi>
             {Number(trip.pickup_latitude).toFixed(4)},{" "}
             {Number(trip.pickup_longitude).toFixed(4)}
@@ -44,7 +45,7 @@ export function TripCard({
         </div>
         <div>
           <span className="dot dark" />
-          <span>مقصد</span>
+          <span>مقصد · {trip.dropoff_label || "نقطهٔ روی نقشه"}</span>
           <bdi>
             {Number(trip.dropoff_latitude).toFixed(4)},{" "}
             {Number(trip.dropoff_longitude).toFixed(4)}
@@ -95,20 +96,33 @@ export function TripCard({
       )}
       {role === "driver" && trip.state === "in_progress" && (
         <div className="trip-actions">
-          <Field label="روش پرداخت">
-            <select
-              value={payment}
-              onChange={(e) => setPayment(e.target.value)}
-            >
-              <option value="wallet-to-wallet">کیف پول مسافر</option>
-              <option value="cash">نقدی · ثبت آزمایشی</option>
-            </select>
-          </Field>
+          {trip.preferred_payment ? (
+            <p className="muted">
+              پرداخت انتخاب‌شدهٔ مسافر:{" "}
+              <strong>
+                {trip.preferred_payment === "cash" ? "نقدی" : "کیف پول"}
+              </strong>
+            </p>
+          ) : (
+            <Field label="روش پرداخت">
+              <select
+                value={payment}
+                onChange={(e) => setPayment(e.target.value)}
+              >
+                <option value="wallet-to-wallet">کیف پول مسافر</option>
+                <option value="cash">نقدی · ثبت آزمایشی</option>
+              </select>
+            </Field>
+          )}
           <button
             className="primary"
             disabled={busy || !online}
             onClick={() =>
-              act(() => api(`/requests/${trip.id}/complete`, { payment }))
+              act(() =>
+                api(`/requests/${trip.id}/complete`, {
+                  payment: paymentForTrip,
+                }),
+              )
             }
           >
             پایان سفر و تسویه

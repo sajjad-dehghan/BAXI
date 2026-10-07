@@ -57,6 +57,7 @@ CREATE TABLE service_requests (
  assigned_driver_id INT, pickup_latitude DOUBLE NOT NULL CHECK(pickup_latitude BETWEEN -90 AND 90),
  pickup_longitude DOUBLE NOT NULL CHECK(pickup_longitude BETWEEN -180 AND 180),
  pickup_province VARCHAR(100) NOT NULL, pickup_city VARCHAR(100) NOT NULL,
+ preferred_payment ENUM('wallet-to-wallet','cash'), pickup_label VARCHAR(240), dropoff_label VARCHAR(240),
  accepted_at DATETIME(6), started_at DATETIME(6), completed_at DATETIME(6),
  FOREIGN KEY(client_id) REFERENCES clients(id), FOREIGN KEY(assigned_driver_id) REFERENCES drivers(id),
  INDEX available_requests(state,service_type), INDEX client_history(client_id,request_time),

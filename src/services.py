@@ -194,9 +194,14 @@ class TripDraft:
     cargo_value: int = 0
     cargo_type: str = "unfragile"
     client_helped: bool = False
+    payment: str | None = None
+    pickup_label: str = ""
+    dropoff_label: str = ""
 
 
 def quote(draft):
+    if draft.payment not in {None, "wallet-to-wallet", "cash"}:
+        raise ValueError("Unknown payment method")
     if draft.service not in VEHICLES:
         raise ValueError("Unknown service")
     pickup, dropoff = coordinates(*draft.pickup), coordinates(*draft.dropoff)
@@ -232,6 +237,11 @@ def create_request(client_id, draft):
         client = one("SELECT * FROM clients WHERE id=%s FOR UPDATE", (client_id,))
         if not client or (draft.service == "women" and client["sex"] != "F"):
             raise ValueError("This passenger cannot request the selected service.")
+        if (
+            draft.payment == "wallet-to-wallet"
+            and client["wallet_balance"] < estimate["cost"]
+        ):
+            raise ValueError("Insufficient wallet balance; choose cash or top up.")
         if one(
             "SELECT id FROM service_requests WHERE client_id=%s AND state IN ('requested','accepted','in_progress')",
             (client_id,),
@@ -240,14 +250,17 @@ def create_request(client_id, draft):
                 "Finish or cancel your current request before making another."
             )
         request_id, _ = execute(
-            """INSERT INTO service_requests(client_id,service_type,pickup_latitude,pickup_longitude,pickup_province,pickup_city)
-            VALUES(%s,%s,%s,%s,%s,%s)""",
+            """INSERT INTO service_requests(client_id,service_type,pickup_latitude,pickup_longitude,pickup_province,pickup_city,preferred_payment,pickup_label,dropoff_label)
+            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (
                 client_id,
                 draft.service,
                 *coordinates(*draft.pickup),
                 origin["state"],
                 origin["city"],
+                draft.payment,
+                str(draft.pickup_label).strip()[:240] or None,
+                str(draft.dropoff_label).strip()[:240] or None,
             ),
         )
         execute(
@@ -281,6 +294,10 @@ def create_request(client_id, draft):
 
 
 REQUEST_SELECT = """SELECT r.*, c.first_name AS client_first_name,c.last_name AS client_last_name,
+    dr.first_name AS driver_first_name,dr.last_name AS driver_last_name,
+    COALESCE(v.vehicle_name,vb.vehicle_name,vh.vehicle_name) AS vehicle_name,
+    COALESCE(v.vehicle_color,vb.vehicle_color,vh.vehicle_color) AS vehicle_color,
+    COALESCE(v.vehicle_license_plate,vb.vehicle_license_plate,vh.vehicle_license_plate) AS vehicle_plate,
     d.latitude AS dropoff_latitude,d.longitude AS dropoff_longitude,t.cost,
     a.driver_rating,a.client_rating,a.method_of_payment,
     COALESCE(h.cargo_weight,l.cargo_weight,0) AS cargo_weight,
@@ -288,6 +305,10 @@ REQUEST_SELECT = """SELECT r.*, c.first_name AS client_first_name,c.last_name AS
     FROM service_requests r JOIN clients c ON c.id=r.client_id
     JOIN destinations d ON d.request_id=r.id AND d.stop_number=1 JOIN trip_costs t ON t.request_id=r.id
     LEFT JOIN service_acceptances a ON a.request_id=r.id
+    LEFT JOIN drivers dr ON dr.id=r.assigned_driver_id
+    LEFT JOIN baxi v ON v.driver_id=dr.id AND r.service_type IN ('baxi','women')
+    LEFT JOIN baxi_box vb ON vb.driver_id=dr.id AND r.service_type='box'
+    LEFT JOIN baxi_baar vh ON vh.driver_id=dr.id AND r.service_type='baar'
     LEFT JOIN heavy_transports h ON h.request_id=r.id LEFT JOIN light_transports l ON l.request_id=r.id"""
 
 
@@ -412,6 +433,8 @@ def complete_trip(driver_id, request_id, payment="wallet-to-wallet"):
             return  # Network/UI retry does not settle twice.
         if request["state"] != "in_progress":
             raise ValueError("Start the trip before finishing it.")
+        if request["preferred_payment"] and payment != request["preferred_payment"]:
+            raise ValueError("Use the passenger's selected payment method.")
         one("SELECT id FROM clients WHERE id=%s FOR UPDATE", (request["client_id"],))
         execute(
             """INSERT INTO service_acceptances(request_id,driver_id,estimated_end_time,method_of_payment)

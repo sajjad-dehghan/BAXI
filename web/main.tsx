@@ -12,14 +12,12 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { Me, Trip, stateNames, humanError, api } from "./lib";
+import { Me, Trip, stateNames, humanError, api, freshBooking } from "./lib";
 import { Busy, Brand, Empty } from "./ui";
 import { Auth } from "./Auth";
 import { Register } from "./Register";
-const JourneyMap = React.lazy(() =>
-  import("./RoutePicker").then((module) => ({ default: module.JourneyMap })),
-);
 import { NewTrip } from "./NewTrip";
+import { PassengerJourney } from "./PassengerJourney";
 import { TripCard } from "./TripCard";
 import { DriverHome } from "./DriverHome";
 import { WalletPage } from "./WalletPage";
@@ -39,6 +37,9 @@ function App() {
   const [online, setOnline] = useState(navigator.onLine);
   const [tab, setTab] = useState("home");
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [booking, setBooking] = useState(freshBooking);
+  const [receiptId, setReceiptId] = useState<number | null>(null);
+  const previousTrip = useRef<number | null>(null);
   const [install, setInstall] = useState<any>(null);
   const [installHelp, setInstallHelp] = useState(false);
   const lock = useRef(false);
@@ -112,6 +113,9 @@ function App() {
     await api("/auth/logout", {});
     setMe(null);
     setTrips([]);
+    setBooking(freshBooking());
+    setReceiptId(null);
+    previousTrip.current = null;
     setTab("home");
     setToast("");
   }
@@ -129,7 +133,16 @@ function App() {
       : [
           {
             id: "home",
-            label: me?.role === "driver" ? "درخواست‌ها" : "سفر جدید",
+            label:
+              me?.role === "driver"
+                ? "درخواست‌ها"
+                : trips.some((trip) =>
+                      ["requested", "accepted", "in_progress"].includes(
+                        trip.state,
+                      ),
+                    )
+                  ? "سفر فعلی"
+                  : "سفر جدید",
             icon: CarFront,
           },
           { id: "history", label: "سفرهای من", icon: History },
@@ -139,6 +152,24 @@ function App() {
   const active = trips.find((t) =>
     ["requested", "accepted", "in_progress"].includes(t.state),
   );
+  const receipt = trips.find(
+    (trip) => trip.id === receiptId && trip.state === "completed",
+  );
+  const riderHome = me?.role === "client" && tab === "home";
+  useEffect(() => {
+    if (me?.role !== "client") return;
+    if (active) {
+      if (previousTrip.current !== active.id) {
+        setBooking(freshBooking());
+        setReceiptId(null);
+      }
+      previousTrip.current = active.id;
+    } else if (previousTrip.current !== null) {
+      const finished = trips.find((trip) => trip.id === previousTrip.current);
+      if (finished?.state === "completed") setReceiptId(finished.id);
+      previousTrip.current = null;
+    }
+  }, [trips, me?.role]);
   if (loading)
     return (
       <div className="initial-loading">
@@ -195,7 +226,7 @@ function App() {
           </button>
         </div>
       ) : (
-        <div className="app-shell">
+        <div className={"app-shell " + (riderHome ? "rider-home" : "")}>
           <aside className="sidebar">
             <Brand />
             <nav aria-label="ناوبری اصلی">
@@ -206,6 +237,8 @@ function App() {
                   className={tab === id ? "nav-item active" : "nav-item"}
                   onClick={() => {
                     setTab(id);
+                    if (id === "home" && me.role === "client" && !active)
+                      setReceiptId(null);
                     setError("");
                   }}
                 >
@@ -278,7 +311,10 @@ function App() {
                 )}
               </div>
             </header>
-            <main className="workspace" id="main-content">
+            <main
+              className={"workspace " + (riderHome ? "rider-workspace" : "")}
+              id="main-content"
+            >
               {me.role === "staff" ? (
                 <StaffPage
                   me={me}
@@ -296,37 +332,28 @@ function App() {
                     busy={busy}
                     online={online}
                   />
-                ) : active ? (
-                  <>
-                    <div className="page-heading">
-                      <span className="eyebrow">همراه مسیر شما</span>
-                      <h1>سفرت در جریانه</h1>
-                      <p>وضعیت سفر با تغییر مراحل، به‌روز می‌شود.</p>
-                    </div>
-                    <div className="active-trip-layout">
-                      <TripCard
-                        trip={active}
-                        role="client"
-                        act={act}
-                        busy={busy}
-                        online={online}
-                      />
-                      <React.Suspense fallback={<Busy />}>
-                        <JourneyMap
-                          pickup={[
-                            Number(active.pickup_latitude),
-                            Number(active.pickup_longitude),
-                          ]}
-                          dropoff={[
-                            Number(active.dropoff_latitude),
-                            Number(active.dropoff_longitude),
-                          ]}
-                        />
-                      </React.Suspense>
-                    </div>
-                  </>
+                ) : active || receipt ? (
+                  <PassengerJourney
+                    trip={(active || receipt)!}
+                    act={act}
+                    busy={busy}
+                    online={online}
+                    onNewTrip={() => {
+                      setReceiptId(null);
+                      setBooking(freshBooking());
+                    }}
+                  />
                 ) : (
-                  <NewTrip me={me} act={act} busy={busy} online={online} />
+                  <NewTrip
+                    me={me}
+                    act={act}
+                    busy={busy}
+                    online={online}
+                    booking={booking}
+                    setBooking={setBooking}
+                    history={trips}
+                    onWallet={() => setTab("wallet")}
+                  />
                 )
               ) : tab === "history" ? (
                 <>
@@ -408,7 +435,11 @@ function App() {
               <button
                 key={id}
                 aria-current={tab === id ? "page" : undefined}
-                onClick={() => setTab(id)}
+                onClick={() => {
+                  setTab(id);
+                  if (id === "home" && me.role === "client" && !active)
+                    setReceiptId(null);
+                }}
                 className={tab === id ? "active" : ""}
               >
                 <Icon size={21} />
