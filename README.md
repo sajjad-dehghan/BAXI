@@ -4,6 +4,7 @@
   <p><strong>Choose two places. Know the price. Follow the journey.</strong></p>
   <p>A Persian, map-first ride and cargo PWA for Tehran.<br>Rebuilt from an undergraduate database project, with product decisions and transactional behavior you can inspect.</p>
   <p>
+    <a href="#product-overview">Watch the overview</a> ·
     <a href="https://github.com/sajjad-dehghan/BAXI/actions/workflows/ci.yml">Build &amp; test CI</a> ·
     <a href="#run-it-locally">Run the demo</a> ·
     <a href="docs/README.fa.md">راهنمای فارسی</a> ·
@@ -12,17 +13,29 @@
   <p><strong>Persian RTL · Installable PWA · React + TypeScript · FastAPI · MySQL 8.4</strong></p>
 </div>
 
-![BAXI on desktop: Tehran map, confirmed places, upfront fare and transparent price breakdown](docs/screenshots/pricing-breakdown-desktop.png)
-
 <p dir="rtl">بکسی از یک پروژهٔ دانشگاهی دسکتاپ به یک اپلیکیشن وب فارسی برای سفر و حمل بار در تهران بازسازی شده است. مبدأ و مقصد روی نقشه انتخاب می‌شوند، قیمت پیش از درخواست مشخص است و مسافر، راننده و کارکنان هر کدام جریان کاری خود را دارند. این مخزن هم برنامهٔ قابل اجراست، هم مستند تصمیم‌های محصول و فنی آن.</p>
 
 **This is a working educational demo.** It persists journeys and settlements in MySQL, using synthetic accounts and simulated money. Tariffs are illustrative; SMS, banking, street routing and insurance are not connected. There is no hosted public demo: the command below starts it on your own computer.
 
-[Product experience](#the-product-experience) · [Driver tour](#the-driver-experience) · [HR tour](#the-hr-experience) · [Pricing](#a-price-you-can-explain) · [Architecture](#under-the-interface) · [Development](#develop-locally) · [Verification](#verified-behavior) · [Origins & credits](#origins-and-credits)
+[Video overview](#product-overview) · [Product experience](#the-product-experience) · [Driver tour](#the-driver-experience) · [HR tour](#the-hr-experience) · [Pricing](#a-price-you-can-explain) · [Architecture](#under-the-interface) · [Development](#develop-locally) · [Verification](#verified-behavior) · [Origins & credits](#origins-and-credits)
+
+## Product overview
+
+<p align="center">
+  <a href="docs/media/baxi-overview.mp4"><img src="docs/media/baxi-overview-cover.jpg" width="360" alt="Watch BAXI: one complete mobile journey from the passenger and driver perspectives"></a>
+</p>
+
+**[▶ Watch the 82-second introduction](docs/media/baxi-overview.mp4)**
+
+<p dir="rtl"><strong>معرفی کلی بکسی؛ یک سفر کامل از دو نگاه.</strong> از انتخاب مبدأ و مقصد و دیدن قیمت تا پذیرش راننده، شروع و پایان سفر، تسویه، امتیازدهی دوطرفه و سوابق. برای تماشای ویدیو روی کاور یا لینک بالا بزنید.</p>
+
+Recorded from the running app with synthetic accounts and simulated wallet payments. Portrait **1080 × 1920**, Persian titles in **Pinar**, original background music, and a **[silent edition](docs/media/baxi-overview-silent.mp4)**. **[Persian subtitles](docs/media/baxi-overview.fa.srt)** · **[Media details and LinkedIn caption](docs/media/README.md)**.
 
 ## The product experience
 
 BAXI brings four services into one journey: **BAXI** for passenger rides, **WOMEN** for female passengers and drivers, **BOX** for parcels, and **BAAR** for urban cargo. A shared journey model connects booking, dispatch, payment and the receipt.
+
+![BAXI on desktop: Tehran map, confirmed places, upfront fare and transparent price breakdown](docs/screenshots/pricing-breakdown-desktop.png)
 
 <table>
   <tr>
